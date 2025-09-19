@@ -33,14 +33,14 @@ grub_install(TL, BD, RD) :-
 % BD is the disk (not a partition)
 grub_install_efi(ENV, BD, RD) :-
 	inst_setting(system(efi), EFI_TARGET),
-	OL = [oo(target, EFI_TARGET), '--efi-directory=/boot/efi', '--bootloader-id=void_grub_efi', '--recheck'],
+	OL = [oo(target, EFI_TARGET), '--efi-directory=/boot/efi', '--bootloader-id=brgvos_grub_efi', '--recheck'],
 	CL = [ENV, chroot, RD, 'grub-install', OL, BD, '2>&1'],
 	% os_shell2(CL),
 	tui_progressbox_safe(CL, '', [title(' Installing GRUB for EFI '), sz([6, 60])]),
 	true.
 
 grub_install_bios(ENV, BD, RD) :-
-	OL = ['--target=i386-pc', '--bootloader-id=void_grub_bios', '--recheck'],
+	OL = ['--target=i386-pc', '--bootloader-id=brgvos_grub_bios', '--recheck'],
 	CL = [ENV, chroot, RD, 'grub-install', OL, BD, '2>&1'],
 	% os_shell2(CL),
 	tui_progressbox_safe(CL, '', [title(' Installing GRUB for BIOS '), sz([6, 60])]),
@@ -58,8 +58,10 @@ grub_config(TL, L) :-
 grub_config([
 		  v('GRUB_DEFAULT', 0, '')
 		, v('GRUB_TIMEOUT', 5, '')
-		, v('GRUB_DISTRIBUTOR', 'Void', '')
-		, v('GRUB_DISABLE_OS_PROBER', true, '')
+		, v('GRUB_BACKGROUND', '/usr/share/brgvos-artwork/splash.png', '')
+		, v('GRUB_DISTRIBUTOR', 'BRGV-OS', '')
+		, v('GRUB_CMDLINE_LINUX', 'quiet splash', '')
+		, v('GRUB_DISABLE_OS_PROBER', false, '')
 		% , v('GRUB_DISABLE_RECOVERY', true, '')
 		% , v('GRUB_TERMINAL_INPUT', console, '')
 		% , v('GRUB_TERMINAL_OUTPUT', console, '')
@@ -69,12 +71,14 @@ grub_config([
 grub_config_luks(TL, [
 		  v('GRUB_ENABLE_CRYPTODISK', y, '')
 		, v('GRUB_CMDLINE_LINUX_DEFAULT', V, 'Generic settings')
+		, v('GRUB_CMDLINE_LINUX', 'quiet splash', 'Splash settings')
 	  ]) :-
 	uses_luks(TL), !,
 	findall(M, (grub_linux_cmdline_luks(TL, L), member(M, L)), VL),
 	os_scmdl(VL, V).
 grub_config_luks(TL, [
 		  v('GRUB_CMDLINE_LINUX_DEFAULT', V, 'Generic settings')
+		, v('GRUB_CMDLINE_LINUX', 'quiet splash', 'Splash settings')
 	]) :-
 	( root_fs(TL, bcachefs) ->
 	  % root_pd(TL, PD),
