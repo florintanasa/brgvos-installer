@@ -71,14 +71,20 @@ grub_config([
 grub_config_luks(TL, [
 		  v('GRUB_ENABLE_CRYPTODISK', y, '')
 		, v('GRUB_CMDLINE_LINUX_DEFAULT', V, 'Generic settings')
+		, v('GRUB_BACKGROUND', '/usr/share/brgvos-artwork/splash.png', '')
+		, v('GRUB_DISTRIBUTOR', 'BRGV-OS', '')
 		, v('GRUB_CMDLINE_LINUX', 'quiet splash', 'Splash settings')
+		, v('GRUB_DISABLE_OS_PROBER', false, '')
 	  ]) :-
 	uses_luks(TL), !,
 	findall(M, (grub_linux_cmdline_luks(TL, L), member(M, L)), VL),
 	os_scmdl(VL, V).
 grub_config_luks(TL, [
 		  v('GRUB_CMDLINE_LINUX_DEFAULT', V, 'Generic settings')
+		, v('GRUB_BACKGROUND', '/usr/share/brgvos-artwork/splash.png', '')
+		, v('GRUB_DISTRIBUTOR', 'BRGV-OS', '')
 		, v('GRUB_CMDLINE_LINUX', 'quiet splash', 'Splash settings')
+		, v('GRUB_DISABLE_OS_PROBER', false, '')
 	]) :-
 	( root_fs(TL, bcachefs) ->
 	  % root_pd(TL, PD),
