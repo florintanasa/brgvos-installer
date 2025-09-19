@@ -169,15 +169,20 @@ install_pkg(TL, local, RD) :-
 	host_name(HN),
 	( HN \= 'void-live'
 	; os_rm_f(RD + '/etc/motd'),
+	  % delete autologin for live user
+	  os_shell2([sed, '-i', 's/GETTY_ARGS="--noclear -a brgvos"/GETTY_ARGS="--noclear"/g', RD + '/etc/sv/agetty-tty1/conf']),
+	  % set autologin to false and delete live user from gdm custom config file
+	  os_shell2([sed, '-i', 's/AutomaticLoginEnable=true/AutomaticLoginEnable=false/g', RD + '/etc/gdm/custom.conf']),
+	  os_shell2([sed, '-i', 's/AutomaticLogin=brgvos/AutomaticLogin=/g', RD + '/etc/gdm/custom.conf']),
 	  % Remove modified sddm.conf to let sddm use the defaults.
 	  os_rm_f(RD + '/etc/sddm.conf'),
 	  os_rm_f(RD + '/etc/sudoers.d/99-void-live')
 	),
 	( (HN = 'void-live' ; HN = hrmpf) ->
 	  os_rm_f(RD + '/etc/issue'),
-	  os_rm_f(RD + '/usr/sbin/void-installer'),
+	  os_rm_f(RD + '/usr/sbin/brgvos-installer'),
 	  % Remove live user.
-	  tui_progressbox_safe([userdel, o('R', RD), '-r', anon, '2>&1'], '', [title(' Remove user anon '), sz([6, 60])])
+	  tui_progressbox_safe([userdel, o('R', RD), '-r', brgvos, '2>&1'], '', [title(' Remove user brgvos '), sz([6, 60])])
 	; true
 	),
 	( HN \= hrmpf
