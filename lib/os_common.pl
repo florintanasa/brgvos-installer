@@ -3,7 +3,7 @@
 
 :- dynamic([get_log/1]).
 
-get_log('/dev/tty8').
+get_log('/dev/tty9').
 
 os_mkdir(D) :-
 	os_call2([mkdir, D]).
