@@ -170,7 +170,7 @@ install_pkg(TL, local, RD) :-
 	( HN \= 'void-live'
 	; os_rm_f(RD + '/etc/motd'),
 	  % delete autologin for live user
-	  os_shell2([sed, '-i', 's/-a brgvos//g', RD + '/etc/sv/agetty-tty1/conf']),
+	  os_shell2([sed, '-i', '"s/-a brgvos//g"', RD + '/etc/sv/agetty-tty1/conf']),
 	  % set autologin to false and delete live user from gdm custom config file
 	  os_shell2([sed, '-i', 's/AutomaticLoginEnable=true/AutomaticLoginEnable=false/g', RD + '/etc/gdm/custom.conf']),
 	  os_shell2([sed, '-i', 's/AutomaticLogin=brgvos/AutomaticLogin=/g', RD + '/etc/gdm/custom.conf']),
