@@ -197,7 +197,7 @@ DIE() {
   clear
   # Remove temporal files
   rm -f "$ANSWER" "$TARGET_FSTAB" "$TARGET_SERVICES"
-  # reenable printk
+  # re-enable printk
   if [ -w /proc/sys/kernel/printk ]; then
     echo 4 >/proc/sys/kernel/printk
   fi
@@ -418,6 +418,7 @@ iso3166_country() {
   esac
 }
 
+# Next function display the disc(s) size in GB and sector size from system
 show_disks() {
   # Set local some variables
   local dev size sectorsize gbytes
