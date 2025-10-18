@@ -31,7 +31,7 @@ dialogRcFile="$HOME/.dialogrc"
 
 # This function create file .dialogrc
 sh_create_dialogrc() {
-  cat >"$dialogRcFile" <<-EOF
+  cat > "$dialogRcFile" <<-EOF
   screen_color = (white,black,off)
   dialog_color = (white,black,off)
   title_color = (cyan,black,on)
@@ -469,7 +469,7 @@ show_partitions() {
   # Define some variables locally
   local disk fstype fssize p part
 
-  set -- "$(show_disks)"
+  set -- $(show_disks)
   while [ $# -ne 0 ]; do
     disk=$(basename "$1")
     shift 2
@@ -537,13 +537,13 @@ menu_filesystems() {
   while true; do
     DIALOG --ok-label "Change" --cancel-label "Done" \
       --title " Select the partition to edit " --menu "$MENULABEL" \
-      "${MENUSIZE}" "$(show_partitions)"
+      ${MENUSIZE} $(show_partitions)
     result=$?
     [ "$result" -ne 0 ] && return
     dev=$(cat "$ANSWER")
 
     DIALOG --title " Select the filesystem type for $dev " \
-      --menu "$MENULABEL" "${MENUSIZE}" \
+      --menu "$MENULABEL" ${MENUSIZE} \
       "btrfs" "Subvolume @,@home,@var_log,@var_lib,@snapshots" \
       "btrfs_lvm" "Subvolume @,@home,@var_log,@var_lib,@snapshots" \
       "btrfs_lvm_crypt" "Subvolume @,@home,@var_log,@var_lib,@snapshots" \
@@ -561,7 +561,7 @@ menu_filesystems() {
       continue
     fi
     if [ "$fstype" != "swap" ]; then
-      DIALOG --inputbox "Please specify the mount point for $dev:" "${INPUTSIZE}"
+      DIALOG --inputbox "Please specify the mount point for $dev:" ${INPUTSIZE}
       result=$?
       if [ "$result" -eq 0 ]; then
         mntpoint=$(cat "$ANSWER")
@@ -571,7 +571,7 @@ menu_filesystems() {
     else
       mntpoint=swap
     fi
-    DIALOG --yesno "Do you want to create a new filesystem on $dev?" "${YESNOSIZE}"
+    DIALOG --yesno "Do you want to create a new filesystem on $dev?" ${YESNOSIZE}
     result=$?
     if [ "$result" -eq 0 ]; then
       reformat=1
@@ -603,13 +603,13 @@ menu_partitions() {
   local device software result
 
   DIALOG --title " Select the disk to partition " \
-    --menu "$MENULABEL" "${MENUSIZE}" "$(show_disks)"
+    --menu "$MENULABEL" ${MENUSIZE} $(show_disks)
   result=$?
   if [ "$result" -eq 0 ]; then
     device=$(cat "$ANSWER")
 
     DIALOG --title " Select the software for partitioning " \
-      --menu "$MENULABEL" "${MENUSIZE}" \
+      --menu "$MENULABEL" ${MENUSIZE} \
       "cfdisk" "Easy to use" \
       "fdisk" "More advanced"
     result=$?
@@ -658,7 +658,6 @@ ${RESET}\n" 23 80
 
 # Function for chose and set keymap
 menu_keymap() {
-  # Define some variables locally
   local _keymaps _KEYMAPS result
   _keymaps="$(find /usr/share/kbd/keymaps/ -type f -iname "*.map.gz" -printf "%f\n" | sed 's|.map.gz||g' | sort)"
   _KEYMAPS=
@@ -667,7 +666,7 @@ menu_keymap() {
     _KEYMAPS="${_KEYMAPS} ${f} -"
   done
   while true; do
-    DIALOG --title " Select your keymap " --menu "$MENULABEL" 14 70 14 "${_KEYMAPS}"
+    DIALOG --title " Select your keymap " --menu "$MENULABEL" 14 70 14 ${_KEYMAPS}
     result=$?
     if [ "$result" -eq 0 ]; then
       set_option KEYMAP "$(cat "$ANSWER")"
@@ -711,7 +710,7 @@ menu_locale() {
   LOCALES=$(sort -t '|' -k 2 < "$TMPFILE" | xargs | sed -e's/| /|/g')
   rm -f "$TMPFILE"
   while true; do
-    (IFS="|"; DIALOG --title " Select your locale " --menu "$MENULABEL" 18 70 18 "${LOCALES}")
+    (IFS="|"; DIALOG --title " Select your locale " --menu "$MENULABEL" 18 70 18 ${LOCALES})
     result=$?
     if [ "$result" -eq 0 ]; then
       set_option LOCALE "$(cat "$ANSWER")"
@@ -745,10 +744,10 @@ menu_timezone() {
   local areas area locations location
   areas=(Africa America Antarctica Arctic Asia Atlantic Australia Europe Indian Pacific)
 
-  while (IFS='|'; DIALOG ${area:+--default-item|"$area"} --title " Select area " --menu "$MENULABEL" 19 51 19 "$(printf '%s||' "${areas[@]}")"); do
+  while (IFS='|'; DIALOG ${area:+--default-item|"$area"} --title " Select area " --menu "$MENULABEL" 19 51 19 $(printf '%s||' "${areas[@]}")); do
     area=$(cat "$ANSWER")
-    read -a locations -d '\n' < <(find /usr/share/zoneinfo/"$area" -type f -printf '%P\n' | sort)
-    if (IFS='|'; DIALOG --title " Select location (${area}) " --menu "$MENULABEL" 19 51 19 "$(printf '%s||' "${locations[@]//_/ }")"); then
+    read -r -a locations -d '\n' < <(find /usr/share/zoneinfo/"$area" -type f -printf '%P\n' | sort)
+    if (IFS='|'; DIALOG --title " Select location (${area}) " --menu "$MENULABEL" 19 51 19 $(printf '%s||' "${locations[@]//_/ }")); then
       location=$(tr ' ' '_' < "$ANSWER")
       set_option TIMEZONE "$area/$location"
       TIMEZONE_DONE=1
@@ -775,7 +774,7 @@ menu_hostname() {
   local result
 
   while true; do
-    DIALOG --inputbox "Set the machine hostname:" "${INPUTSIZE}"
+    DIALOG --inputbox "Set the machine hostname:" ${INPUTSIZE}
     result=$?
     if [ "$result" -eq 0 ]; then
       set_option HOSTNAME "$(cat "$ANSWER")"
@@ -807,7 +806,7 @@ menu_rootpassword() {
     else
       _again=" again"
     fi
-    DIALOG --insecure --passwordbox "${_desc}${_again}" "${INPUTSIZE}"
+    DIALOG --insecure --passwordbox "${_desc}${_again}" ${INPUTSIZE}
     result=$?
     if [ "$result" -eq 0 ]; then
       if [ -z "${_firstpass}" ]; then
@@ -846,7 +845,7 @@ menu_useraccount() {
   while true; do
     _preset=$(get_option USERLOGIN)
     [ -z "$_preset" ] && _preset="brgvos"
-    DIALOG --inputbox "Enter a primary login name:" "${INPUTSIZE}" "$_preset"
+    DIALOG --inputbox "Enter a primary login name:" ${INPUTSIZE} "$_preset"
     result=$?
     if [ "$result" -eq 0 ]; then
       _userlogin="$(cat "$ANSWER")"
@@ -869,7 +868,7 @@ menu_useraccount() {
     _preset=$(get_option USERNAME)
     [ -z "$_preset" ] && _preset="User Name"
     DIALOG --inputbox "Enter a display name for login '$(get_option USERLOGIN)' :" \
-      "${INPUTSIZE}" "$_preset"
+      ${INPUTSIZE} "$_preset"
     result=$?
     if [ "$result" -eq 0 ]; then
       set_option USERNAME "$(cat "$ANSWER")"
@@ -886,7 +885,7 @@ menu_useraccount() {
     else
       _again=" again"
     fi
-    DIALOG --insecure --passwordbox "${_desc}${_again}" "${INPUTSIZE}"
+    DIALOG --insecure --passwordbox "${_desc}${_again}" ${INPUTSIZE}
     result=$?
     if [ "$result" -eq 0 ]; then
       if [ -z "${_firstpass}" ]; then
@@ -909,13 +908,13 @@ menu_useraccount() {
     fi
   done
 
-  _groups="wheel,audio,video,floppy,cdrom,optical,kvm,users,xbuilder"
+  _groups="wheel,audio,video,floppy,lp,dialout,cdrom,optical,storage,kvm,plugdev,users,xbuilder,bluetooth,socklog"
   while true; do
     _desc="Select group membership for login '$(get_option USERLOGIN)':"
     for _group in $(cat /etc/group); do
-      _gid="$(echo "${_group}" | cut -d: -f3)"
-      _group="$(echo "${_group}" | cut -d: -f1)"
-      _status="$(echo "${_groups}" | grep -w "${_group}")"
+      _gid="$(echo ${_group} | cut -d: -f3)"
+      _group="$(echo ${_group} | cut -d: -f1)"
+      _status="$(echo ${_groups} | grep -w ${_group})"
       if [ -z "${_status}" ]; then
         _status=off
       else
@@ -931,7 +930,7 @@ menu_useraccount() {
         _checklist="${_checklist} ${_group} ${_group}:${_gid} ${_status}"
       fi
     done
-    DIALOG --no-tags --checklist "${_desc}" 20 60 18 "${_checklist}"
+    DIALOG --no-tags --checklist "${_desc}" 20 60 18 ${_checklist}
     if [ $? -eq 0 ]; then
       set_option USERGROUPS "$(cat "$ANSWER" | sed -e's| |,|g')"
       USERGROUPS_DONE=1
@@ -958,7 +957,7 @@ menu_bootloader() {
 
   while true; do
     DIALOG --title " Select the disk to install the bootloader" \
-      --menu "$MENULABEL" "${MENUSIZE}" "$(show_disks)" none "Manage bootloader otherwise"
+      --menu "$MENULABEL" ${MENUSIZE} $(show_disks) none "Manage bootloader otherwise"
     result=$?
     if [ "$result" -eq 0 ]; then
       set_option BOOTLOADER "$(cat "$ANSWER")"
@@ -969,7 +968,7 @@ menu_bootloader() {
     fi
   done
   while true; do
-    DIALOG --yesno "Use a graphical terminal for the boot loader?" "${YESNOSIZE}"
+    DIALOG --yesno "Use a graphical terminal for the boot loader?" ${YESNOSIZE}
     result=$?
     if [ "$result" -eq 0 ]; then
       set_option TEXTCONSOLE 0
@@ -1047,26 +1046,24 @@ failed to run grub-mkconfig!\nCheck $LOG for errors." "${MSGBOXSIZE}"
 
 # Function to test network connection
 test_network() {
-  # Define some variables locally
-  local status
   # Reset the global variable to ensure that network is accessible for this test.
   NETWORK_DONE=
 
   rm -f otime && \
     xbps-uhelper fetch https://repo-default.voidlinux.org/current/otime >>"$LOG" 2>&1
-  status=$?
+  local status=$?
   rm -f otime
 
   if [ "$status" -eq 0 ]; then
-    DIALOG --msgbox "Network is working properly!" "${MSGBOXSIZE}"
+    DIALOG --msgbox "Network is working properly!" ${MSGBOXSIZE}
     NETWORK_DONE=1
     return 1
   fi
   if [ "$1" = "nm" ]; then
-    DIALOG --msgbox "Network Manager is enabled but network is inaccessible, please set it up
-    externally with nmcli, nmtui, or the Network Manager tray applet." "${MSGBOXSIZE}"
+    DIALOG --msgbox "Network Manager is enabled but network is inaccessible, please set it up externally
+     with nmcli, nmtui, or the Network Manager tray applet." ${MSGBOXSIZE}
   else
-    DIALOG --msgbox "Network is inaccessible, please set it up properly." "${MSGBOXSIZE}"
+    DIALOG --msgbox "Network is inaccessible, please set it up properly." ${MSGBOXSIZE}
   fi
 }
 
@@ -1085,13 +1082,13 @@ configure_wifi() {
   ssid="${values[0]}"; enc="${values[1]}"; pass="${values[2]}"
 
   if [ -z "$ssid" ]; then
-    DIALOG --msgbox "Invalid SSID." "${MSGBOXSIZE}"
+    DIALOG --msgbox "Invalid SSID." ${MSGBOXSIZE}
     return 1
   elif [ -z "$enc" ] || [ "$enc" != "wep" ] && [ "$enc" != "wpa" ]; then
-    DIALOG --msgbox "Invalid encryption type (possible values: wep or wpa)." "${MSGBOXSIZE}"
+    DIALOG --msgbox "Invalid encryption type (possible values: wep or wpa)." ${MSGBOXSIZE}
     return 1
   elif [ -z "$pass" ]; then
-    DIALOG --msgbox "Invalid AP password." "${MSGBOXSIZE}"
+    DIALOG --msgbox "Invalid AP password." ${MSGBOXSIZE}
   fi
 
   # reset the configuration to the default, if necessary
@@ -1125,10 +1122,10 @@ configure_net() {
   local dev rval
   dev="$1"
 
-  DIALOG --yesno "Do you want to use DHCP for $dev?" "${YESNOSIZE}"
+  DIALOG --yesno "Do you want to use DHCP for $dev?" ${YESNOSIZE}
   rval=$?
   if [ "$rval" -eq 0 ]; then
-    configure_net_dhcp $dev
+    configure_net_dhcp "$dev"
   elif [ "$rval" -eq 1 ]; then
     configure_net_static "$dev"
   fi
@@ -1149,7 +1146,7 @@ configure_net_dhcp() {
   iface_setup "$dev"
   if [ $? -eq 1 ]; then
     sv restart dhcpcd 2>&1 | tee "$LOG" | \
-      DIALOG --progressbox "Initializing $dev via DHCP..." "${WIDGET_SIZE}"
+      DIALOG --progressbox "Initializing $dev via DHCP..." ${WIDGET_SIZE}
     if [ $? -ne 0 ]; then
       DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} failed to run dhcpcd. See $LOG for details." ${MSGBOXSIZE}
       return 1
@@ -1183,18 +1180,18 @@ configure_net_static() {
   echo "running: ip link set dev $dev up" >>"$LOG"
   ip link set dev "$dev" up >>"$LOG" 2>&1
   if [ $? -ne 0 ]; then
-    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} Failed to bring $dev interface." "${MSGBOXSIZE}"
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} Failed to bring $dev interface." ${MSGBOXSIZE}
     return 1
   fi
   echo "running: ip addr add $ip dev $dev" >>"$LOG"
   ip addr add "$ip" dev "$dev" >>"$LOG" 2>&1
   if [ $? -ne 0 ]; then
-    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} Failed to set ip to the $dev interface." "${MSGBOXSIZE}"
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} Failed to set ip to the $dev interface." ${MSGBOXSIZE}
     return 1
   fi
   ip route add default via "$gw" >>"$LOG" 2>&1
   if [ $? -ne 0 ]; then
-    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} failed to setup your gateway." "${MSGBOXSIZE}"
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} failed to setup your gateway." ${MSGBOXSIZE}
     return 1
   fi
   echo "nameserver $dns1" >/etc/resolv.conf
@@ -1221,7 +1218,7 @@ menu_network() {
     DEVICES="$DEVICES $f $addr"
   done
   DIALOG --title " Select the network interface to configure " \
-    --menu "$MENULABEL" "${MENUSIZE}" "${DEVICES}"
+    --menu "$MENULABEL" "${MENUSIZE}" ${DEVICES}
   status=$?
   if [ "$status" -eq 0 ]; then
     dev=$(cat "$ANSWER")
@@ -1445,20 +1442,20 @@ failed to mount $dev on ${mntpt}! check $LOG for errors." "${MSGBOXSIZE}"
     fi
     # Create subvolume @, @home, @var_log, @var_lib and @snapshots
     if [ "$fstype" = "btrfs" ]; then
-    {
-      btrfs subvolume create "$TARGETDIR"/@
-      btrfs subvolume create "$TARGETDIR"/@home
-      btrfs subvolume create "$TARGETDIR"/@var_log
-      btrfs subvolume create "$TARGETDIR"/@var_lib
-      btrfs subvolume create "$TARGETDIR"/@snapshots
-      umount "$TARGETDIR"
-      mount -t "$fstype" -o "$options",subvol=@ "$dev" "$TARGETDIR"
-      mkdir -p "$TARGETDIR"/{home,var/log,var/lib,.snapshots}
-      mount -t "$fstype" -o "$options",subvol=@home "$dev" "$TARGETDIR"/home
-      mount -t "$fstype" -o "$options",subvol=@snapshots "$dev" "$TARGETDIR"/.snapshots
-      mount -t "$fstype" -o "$options",subvol=@var_log "$dev" "$TARGETDIR"/var/log
-      mount -t "$fstype" -o "$options",subvol=@var_lib "$dev" "$TARGETDIR"/var/lib
-    } >>"$LOG" 2>&1
+      {
+        btrfs subvolume create "$TARGETDIR"/@
+        btrfs subvolume create "$TARGETDIR"/@home
+        btrfs subvolume create "$TARGETDIR"/@var_log
+        btrfs subvolume create "$TARGETDIR"/@var_lib
+        btrfs subvolume create "$TARGETDIR"/@snapshots
+        umount "$TARGETDIR"
+        mount -t "$fstype" -o "$options",subvol=@ "$dev" "$TARGETDIR"
+        mkdir -p "$TARGETDIR"/{home,var/log,var/lib,.snapshots}
+        mount -t "$fstype" -o "$options",subvol=@home "$dev" "$TARGETDIR"/home
+        mount -t "$fstype" -o "$options",subvol=@snapshots "$dev" "$TARGETDIR"/.snapshots
+        mount -t "$fstype" -o "$options",subvol=@var_log "$dev" "$TARGETDIR"/var/log
+        mount -t "$fstype" -o "$options",subvol=@var_lib "$dev" "$TARGETDIR"/var/lib
+      } >>"$LOG" 2>&1
     elif [ "$fstype" = "btrfs_lvm" ] || [ "$fstype" = "btrfs_lvm_crypt" ]; then
       {
         btrfs subvolume create "$TARGETDIR"/@
@@ -1484,24 +1481,24 @@ failed to mount $dev on ${mntpt}! check $LOG for errors." "${MSGBOXSIZE}"
       fspassno=1
     fi
     if [ "$fstype" = "btrfs" ]; then
-    {
-      echo "UUID=$uuid / $fstype $options,subvol=@ 0 $fspassno"
-      echo "UUID=$uuid /home $fstype $options,subvol=@home 0 $fspassno"
-      echo "UUID=$uuid /.snapshots $fstype $options,subvol=@snapshots 0 $fspassno"
-      echo "UUID=$uuid /var/log $fstype $options,subvol=@var_log 0 $fspassno"
-      echo "UUID=$uuid /var/lib $fstype $options,subvol=@var_lib 0 $fspassno"
-    } >>"$TARGET_FSTAB"
+      {
+        echo "UUID=$uuid / $fstype $options,subvol=@ 0 $fspassno"
+        echo "UUID=$uuid /home $fstype $options,subvol=@home 0 $fspassno"
+        echo "UUID=$uuid /.snapshots $fstype $options,subvol=@snapshots 0 $fspassno"
+        echo "UUID=$uuid /var/log $fstype $options,subvol=@var_log 0 $fspassno"
+        echo "UUID=$uuid /var/lib $fstype $options,subvol=@var_lib 0 $fspassno"
+      } >>"$TARGET_FSTAB"
     elif [ "$fstype" = "btrfs_lvm" ] || [ "$fstype" = "btrfs_lvm_crypt" ]; then
       ROOT_UUID=$(blkid -s UUID -o value /dev/mapper/vg0-brgvos)
       SWAP_UUID=$(blkid -s UUID -o value /dev/mapper/vg0-swap)
-    {
-      echo "UUID=$ROOT_UUID / btrfs $options,subvol=@ 0 $fspassno"
-      echo "UUID=$ROOT_UUID /home btrfs $options,subvol=@home 0 $fspassno"
-      echo "UUID=$ROOT_UUID /.snapshots btrfs $options,subvol=@snapshots 0 $fspassno"
-      echo "UUID=$ROOT_UUID /var/log btrfs $options,subvol=@var_log 0 $fspassno"
-      echo "UUID=$ROOT_UUID /var/lib btrfs $options,subvol=@var_lib 0 $fspassno"
-      echo "UUID=$SWAP_UUID none swap defaults 0 $fspassno"
-    } >>"$TARGET_FSTAB"
+      {
+        echo "UUID=$ROOT_UUID / btrfs $options,subvol=@ 0 $fspassno"
+        echo "UUID=$ROOT_UUID /home btrfs $options,subvol=@home 0 $fspassno"
+        echo "UUID=$ROOT_UUID /.snapshots btrfs $options,subvol=@snapshots 0 $fspassno"
+        echo "UUID=$ROOT_UUID /var/log btrfs $options,subvol=@var_log 0 $fspassno"
+        echo "UUID=$ROOT_UUID /var/lib btrfs $options,subvol=@var_lib 0 $fspassno"
+        echo "UUID=$SWAP_UUID none swap defaults 0 $fspassno"
+      } >>"$TARGET_FSTAB"
     else
       echo "UUID=$uuid $mntpt $fstype defaults 0 $fspassno" >>"$TARGET_FSTAB"
     fi
@@ -1544,13 +1541,11 @@ mount_filesystems() {
 
 # Function to umount filesystems
 umount_filesystems() {
-  # Define some variables locally
-  local mnts
+  local mnts dev fstype
   mnts="$(grep -E '^MOUNTPOINT .* swap .*$' "$CONF_FILE" | sort -r -k 5)"
-
-  set -- "${mnts}"
+  set -- ${mnts}
   while [ $# -ne 0 ]; do
-    local dev=$2; local fstype=$3
+    dev=$2; fstype=$3
     shift 6
     if [ "$fstype" = "swap" ]; then
       echo "Disabling swap space on $dev..." >>"$LOG"
@@ -1877,7 +1872,7 @@ ${BOLD}Do you want to continue?${RESET}" 20 80 || return
 
   # installed successfully.
   DIALOG --yesno "${BOLD}BRGV-OS Linux has been installed successfully!${RESET}\n
-Do you want to reboot the system?" "${YESNOSIZE}"
+Do you want to reboot the system?" ${YESNOSIZE}
   status=$?
   if [ "$status" -eq 0 ]; then
     shutdown -r now
@@ -1924,7 +1919,7 @@ menu() {
 
   if xbps-uhelper arch | grep -qe '-musl$'; then
     AFTER_HOSTNAME="Timezone"
-    DIALOG --default-item "$DEFITEM" \
+    DIALOG --default-item $DEFITEM \
       --extra-button --extra-label "Settings" \
       --title " BRGV-OS Linux installation menu " \
       --menu "$MENULABEL" 10 80 0 \
@@ -1943,7 +1938,7 @@ menu() {
       "Exit" "Exit installation"
   else
     AFTER_HOSTNAME="Locale"
-    DIALOG --default-item "$DEFITEM" \
+    DIALOG --default-item $DEFITEM \
       --extra-button --extra-label "Settings" \
       --title " BRGV-OS Linux installation menu " \
       --menu "$MENULABEL" 10 80 0 \
@@ -1973,7 +1968,7 @@ menu() {
     return
   fi
 
-  case $(cat "$ANSWER") in
+  case $(cat $ANSWER) in
   "Keyboard") menu_keymap && [ -n "$KEYBOARD_DONE" ] && DEFITEM="Network";;
   "Network") menu_network && [ -n "$NETWORK_DONE" ] && DEFITEM="Source";;
   "Source") menu_source && [ -n "$SOURCE_DONE" ] && DEFITEM="Mirror";;
@@ -1989,7 +1984,7 @@ menu() {
   "Filesystems") menu_filesystems && [ -n "$FILESYSTEMS_DONE" ] && DEFITEM="Install";;
   "Install") menu_install;;
   "Exit") DIE;;
-  *) DIALOG --yesno "Abort Installation?" "${YESNOSIZE}" && DIE
+  *) DIALOG --yesno "Abort Installation?" ${YESNOSIZE} && DIE
   esac
 }
 
