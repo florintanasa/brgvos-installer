@@ -31,6 +31,7 @@
       <w>inputsize</w>
       <w>itemhelp</w>
       <w>keyidx</w>
+      <w>loadkeys</w>
       <w>loglevel</w>
       <w>lvname</w>
       <w>mdstat</w>
@@ -54,6 +55,7 @@
       <w>otime</w>
       <w>partfs</w>
       <w>pkname</w>
+      <w>plugdev</w>
       <w>polkit</w>
       <w>printk</w>
       <w>rootfound</w>
@@ -65,6 +67,7 @@
       <w>secondpass</w>
       <w>sectorsize</w>
       <w>skel</w>
+      <w>socklog</w>
       <w>sulogin</w>
       <w>syspkg</w>
       <w>tanasă</w>
