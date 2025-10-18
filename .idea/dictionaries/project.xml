@@ -1,8 +1,13 @@
 <component name="ProjectDictionaryState">
   <dictionary name="project">
     <words>
+      <w>addr</w>
+      <w>agetty</w>
       <w>bdev</w>
+      <w>bootdev</w>
       <w>brgv</w>
+      <w>brlapi</w>
+      <w>brltty</w>
       <w>cciss</w>
       <w>cfdisk</w>
       <w>chpasswd</w>
@@ -10,16 +15,22 @@
       <w>cryptlvm</w>
       <w>cryptodisk</w>
       <w>crypttab</w>
+      <w>defitem</w>
+      <w>dhcpcd</w>
       <w>dialogrc</w>
+      <w>espeakup</w>
       <w>fdisk</w>
       <w>firstpass</w>
+      <w>fspassno</w>
       <w>fssize</w>
       <w>fstype</w>
       <w>gbytes</w>
+      <w>iface</w>
       <w>initramfs</w>
       <w>inputbox</w>
       <w>inputsize</w>
       <w>itemhelp</w>
+      <w>keyidx</w>
       <w>loglevel</w>
       <w>lvname</w>
       <w>mdstat</w>
@@ -27,37 +38,61 @@
       <w>menulabel</w>
       <w>menusize</w>
       <w>mkconfig</w>
+      <w>mkfs</w>
       <w>mntpoint</w>
+      <w>mntpt</w>
+      <w>mnts</w>
       <w>mountpoint</w>
       <w>msgboxsize</w>
+      <w>ncheck</w>
       <w>nmcli</w>
       <w>nmtui</w>
+      <w>noatime</w>
+      <w>noclear</w>
+      <w>nodev</w>
+      <w>nosuid</w>
       <w>otime</w>
       <w>partfs</w>
+      <w>pkname</w>
+      <w>polkit</w>
       <w>printk</w>
+      <w>rootfound</w>
       <w>rootpassword</w>
+      <w>runsvdir</w>
       <w>rval</w>
+      <w>sddm</w>
       <w>searchbox</w>
       <w>secondpass</w>
       <w>sectorsize</w>
+      <w>skel</w>
+      <w>sulogin</w>
+      <w>syspkg</w>
       <w>tanasă</w>
       <w>targetdir</w>
+      <w>targetfs</w>
       <w>textconsole</w>
       <w>tmpfile</w>
       <w>uarrow</w>
+      <w>udevd</w>
       <w>urandom</w>
       <w>useraccount</w>
+      <w>userdel</w>
       <w>usergroups</w>
       <w>userlogin</w>
       <w>userpassword</w>
+      <w>usrfound</w>
       <w>vfat</w>
       <w>vgname</w>
       <w>vinstall</w>
+      <w>wpasupconf</w>
+      <w>xattrs</w>
       <w>xbps</w>
       <w>xbuilder</w>
+      <w>xmirror</w>
       <w>xxxxxxxx</w>
       <w>yesnosize</w>
       <w>zoneinfo</w>
+      <w>zstd</w>
     </words>
   </dictionary>
 </component>
