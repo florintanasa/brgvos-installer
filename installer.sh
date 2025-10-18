@@ -1056,6 +1056,7 @@ test_network() {
     xbps-uhelper fetch https://repo-default.voidlinux.org/current/otime >>"$LOG" 2>&1
   status=$?
   rm -f otime
+
   if [ "$status" -eq 0 ]; then
     DIALOG --msgbox "Network is working properly!" "${MSGBOXSIZE}"
     NETWORK_DONE=1
@@ -1068,3 +1069,954 @@ test_network() {
     DIALOG --msgbox "Network is inaccessible, please set it up properly." "${MSGBOXSIZE}"
   fi
 }
+
+# Function to configure Wi-Fi network
+configure_wifi() {
+  # Define some variables locally
+  local dev ssid enc pass _wpasupconf values
+  dev="$1"
+  _wpasupconf=/etc/wpa_supplicant/wpa_supplicant.conf
+
+  DIALOG --form "Wireless configuration for ${dev}\n(encryption type: wep or wpa)" 0 0 0 \
+    "SSID:" 1 1 "" 1 16 30 0 \
+    "Encryption:" 2 1 "" 2 16 4 3 \
+    "Password:" 3 1 "" 3 16 63 0 || return 1
+  readarray -t values <<<"$(cat "$ANSWER")"
+  ssid="${values[0]}"; enc="${values[1]}"; pass="${values[2]}"
+
+  if [ -z "$ssid" ]; then
+    DIALOG --msgbox "Invalid SSID." "${MSGBOXSIZE}"
+    return 1
+  elif [ -z "$enc" ] || [ "$enc" != "wep" ] && [ "$enc" != "wpa" ]; then
+    DIALOG --msgbox "Invalid encryption type (possible values: wep or wpa)." "${MSGBOXSIZE}"
+    return 1
+  elif [ -z "$pass" ]; then
+    DIALOG --msgbox "Invalid AP password." "${MSGBOXSIZE}"
+  fi
+
+  # reset the configuration to the default, if necessary
+  # otherwise backup the configuration
+  if [ -f "${_wpasupconf}".orig ]; then
+    cp -f "${_wpasupconf}".orig "${_wpasupconf}"
+  else
+    cp -f "${_wpasupconf}" "${_wpasupconf}".orig
+  fi
+  if [ "$enc" = "wep" ]; then
+    cat << EOF >> "${_wpasupconf}"
+network={
+  ssid="$ssid"
+  wep_key0="$pass"
+  wep_tx_keyidx=0
+  auth_alg=SHARED
+}
+EOF
+  else
+    wpa_passphrase "$ssid" "$pass" >> "${_wpasupconf}"
+  fi
+
+  sv restart wpa_supplicant
+  configure_net_dhcp "$dev"
+  return $?
+}
+
+# Function to configure network
+configure_net() {
+  # Define some variables locally
+  local dev rval
+  dev="$1"
+
+  DIALOG --yesno "Do you want to use DHCP for $dev?" "${YESNOSIZE}"
+  rval=$?
+  if [ "$rval" -eq 0 ]; then
+    configure_net_dhcp $dev
+  elif [ "$rval" -eq 1 ]; then
+    configure_net_static "$dev"
+  fi
+}
+
+# Function return interface setup
+iface_setup() {
+  ip addr show dev "$1" | grep -q -e 'inet ' -e 'inet6 '
+  return $?
+}
+
+# Function configure interface for dhcpcd service
+configure_net_dhcp() {
+  # Define some variables locally
+  local dev
+  dev="$1"
+
+  iface_setup "$dev"
+  if [ $? -eq 1 ]; then
+    sv restart dhcpcd 2>&1 | tee "$LOG" | \
+      DIALOG --progressbox "Initializing $dev via DHCP..." "${WIDGET_SIZE}"
+    if [ $? -ne 0 ]; then
+      DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} failed to run dhcpcd. See $LOG for details." ${MSGBOXSIZE}
+      return 1
+    fi
+    export -f iface_setup
+    timeout 10s bash -c "while true; do iface_setup $dev; sleep 0.25; done"
+    if [ $? -eq 1 ]; then
+      DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} DHCP request failed for $dev. Check $LOG for errors." ${MSGBOXSIZE}
+      return 1
+    fi
+  fi
+  test_network
+  if [ $? -eq 1 ]; then
+    set_option NETWORK "${dev} dhcp"
+  fi
+}
+
+# Function configure interface network static
+configure_net_static() {
+  # Define some variables locally
+  local ip gw dns1 dns2 dev=$1
+
+  DIALOG --form "Static IP configuration for $dev:" 0 0 0 \
+    "IP address:" 1 1 "192.168.0.2" 1 21 20 0 \
+    "Gateway:" 2 1 "192.168.0.1" 2 21 20 0 \
+    "DNS Primary" 3 1 "8.8.8.8" 3 21 20 0 \
+    "DNS Secondary" 4 1 "8.8.4.4" 4 21 20 0 || return 1
+
+  set -- "$(cat "$ANSWER")"
+  ip=$1; gw=$2; dns1=$3; dns2=$4
+  echo "running: ip link set dev $dev up" >>"$LOG"
+  ip link set dev "$dev" up >>"$LOG" 2>&1
+  if [ $? -ne 0 ]; then
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} Failed to bring $dev interface." "${MSGBOXSIZE}"
+    return 1
+  fi
+  echo "running: ip addr add $ip dev $dev" >>"$LOG"
+  ip addr add "$ip" dev "$dev" >>"$LOG" 2>&1
+  if [ $? -ne 0 ]; then
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} Failed to set ip to the $dev interface." "${MSGBOXSIZE}"
+    return 1
+  fi
+  ip route add default via "$gw" >>"$LOG" 2>&1
+  if [ $? -ne 0 ]; then
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} failed to setup your gateway." "${MSGBOXSIZE}"
+    return 1
+  fi
+  echo "nameserver $dns1" >/etc/resolv.conf
+  echo "nameserver $dns2" >>/etc/resolv.conf
+  test_network
+  if [ $? -eq 1 ]; then
+    set_option NETWORK "${dev} static $ip $gw $dns1 $dns2"
+  fi
+}
+
+# Function for menu network to configure interface network
+menu_network() {
+  # Define some variables locally
+  local dev addr f DEVICES status
+
+  if [ -e /var/service/NetworkManager ]; then
+    test_network nm
+    return
+  fi
+
+  for f in $(ls /sys/class/net); do
+    [ "$f" = "lo" ] && continue
+    addr=$(cat /sys/class/net/"$f"/address)
+    DEVICES="$DEVICES $f $addr"
+  done
+  DIALOG --title " Select the network interface to configure " \
+    --menu "$MENULABEL" "${MENUSIZE}" "${DEVICES}"
+  status=$?
+  if [ "$status" -eq 0 ]; then
+    dev=$(cat "$ANSWER")
+    if $(echo $dev|egrep -q "^wl.*" 2>/dev/null); then
+      configure_wifi "$dev"
+    else
+      configure_net "$dev"
+    fi
+  fi
+}
+
+# Function to validate user account
+validate_useraccount() {
+  # Define some variables locally
+  local USERLOGIN USERPASSWORD USERGROUPS
+  # don't check that USERNAME has been set because it can be empty
+  USERLOGIN=$(get_option USERLOGIN)
+  USERPASSWORD=$(get_option USERPASSWORD)
+  USERGROUPS=$(get_option USERGROUPS)
+
+  if [ -n "$USERLOGIN" ] && [ -n "$USERPASSWORD" ] && [ -n "$USERGROUPS" ]; then
+    USERACCOUNT_DONE=1
+  fi
+}
+
+# Function to validate user account
+validate_filesystems() {
+  # Define some variables locally
+  local mnts dev size fstype mntpt mkfs rootfound fmt usrfound efi_system_partition bootdev
+  bootdev=$(get_option BOOTLOADER)
+
+  unset TARGETFS
+  local TARGETFS
+  mnts=$(grep -E '^MOUNTPOINT .*' "$CONF_FILE")
+  set -- "${mnts}"
+  while [ $# -ne 0 ]; do
+    fmt=""
+    dev=$2; fstype=$3; size=$4; mntpt="$5"; mkfs=$6
+    shift 6
+
+    if [ "$mntpt" = "/" ]; then
+      rootfound=1
+    elif [ "$mntpt" = "/usr" ]; then
+      usrfound=1
+    elif [ "$fstype" = "vfat" ] && [ "$mntpt" = "/boot/efi" ]; then
+      efi_system_partition=1
+    fi
+    if [ "$mkfs" -eq 1 ]; then
+      fmt="NEW FILESYSTEM: "
+    fi
+    if [ -z "$TARGETFS" ]; then
+      TARGETFS="${fmt}$dev ($size) mounted on $mntpt as ${fstype}\n"
+    else
+      TARGETFS="${TARGETFS}${fmt}${dev} ($size) mounted on $mntpt as ${fstype}\n"
+    fi
+  done
+  if [ -z "$rootfound" ]; then
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
+the mount point for the root filesystem (/) has not yet been configured." "${MSGBOXSIZE}"
+    return 1
+  elif [ -n "$usrfound" ]; then
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
+/usr mount point has been configured but is not supported, please remove it to continue." "${MSGBOXSIZE}"
+    return 1
+  elif [ -n "$EFI_SYSTEM" ] && [ "$bootdev" != "none" ] && [ -z "$efi_system_partition" ]; then
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
+The EFI System Partition has not yet been configured, please create it\n
+as FAT32, mountpoint /boot/efi and at least with 100MB of size." "${MSGBOXSIZE}"
+    return 1
+  fi
+  FILESYSTEMS_DONE=1
+}
+
+# Function to create filesystems
+create_filesystems() {
+  # Define some variables locally
+  local mnts dev mntpt fstype fspassno mkfs rv uuid MKFS mem_total swap_need disk_name disk_type ROOT_UUID SWAP_UUID
+
+  mnts=$(grep -E '^MOUNTPOINT .*' "$CONF_FILE" | sort -k 5)
+  set -- "${mnts}"
+  while [ $# -ne 0 ]; do
+    dev=$2; fstype=$3; mntpt="$5"; mkfs=$6
+    shift 6
+
+    # swap partitions
+    if [ "$fstype" = "swap" ]; then
+      swapoff "$dev" >/dev/null 2>&1
+      if [ "$mkfs" -eq 1 ]; then
+        mkswap "$dev" >>"$LOG" 2>&1
+        if [ $? -ne 0 ]; then
+          DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
+failed to create swap on ${dev}!\ncheck $LOG for errors." "${MSGBOXSIZE}"
+          DIE 1
+        fi
+      fi
+      swapon "$dev" >>"$LOG" 2>&1
+      if [ $? -ne 0 ]; then
+        DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
+failed to activate swap on $dev!\ncheck $LOG for errors." "${MSGBOXSIZE}"
+        DIE 1
+      fi
+      # Add entry for target fstab
+      uuid=$(blkid -o value -s UUID "$dev")
+      echo "UUID=$uuid none swap defaults 0 0" >>"$TARGET_FSTAB"
+      continue
+    fi
+
+    if [ "$mkfs" -eq 1 ]; then
+      case "$fstype" in
+      btrfs) MKFS="mkfs.btrfs -f"; modprobe btrfs >>"$LOG" 2>&1;;
+      btrfs_lvm) MKFS="mkfs.btrfs -f"; modprobe btrfs >>"$LOG" 2>&1;;
+      btrfs_lvm_crypt) MKFS="mkfs.btrfs -f"; modprobe btrfs >>"$LOG" 2>&1;;
+      ext2) MKFS="mke2fs -F"; modprobe ext2 >>"$LOG" 2>&1;;
+      ext3) MKFS="mke2fs -F -j"; modprobe ext3 >>"$LOG" 2>&1;;
+      ext4) MKFS="mke2fs -F -t ext4"; modprobe ext4 >>"$LOG" 2>&1;;
+      f2fs) MKFS="mkfs.f2fs -f"; modprobe f2fs >>"$LOG" 2>&1;;
+      vfat) MKFS="mkfs.vfat -F32"; modprobe vfat >>"$LOG" 2>&1;;
+      xfs) MKFS="mkfs.xfs -f -i sparse=0"; modprobe xfs >>"$LOG" 2>&1;;
+      esac
+      # Calculate total memory in GB
+      mem_total=$(free -t -g | grep -oP '\d+' | sed '10!d')
+      # Calculate swap need, usually 2*RAM
+      swap_need=$(($mem_total*2))
+      swap_need+="G"
+      # Prepare LVM
+      if [ "$fstype" = "btrfs_lvm" ]; then
+        {
+          pvcreate "$dev"
+          vgcreate vg0 "$dev"
+          lvcreate --yes --name swap -L "$swap_need" vg0
+          lvcreate --yes --name brgvos -l +100%FREE vg0
+        } >>"$LOG" 2>&1
+        TITLE="Check $LOG for details ..."
+        INFOBOX "Creating filesystem btrfs on /dev/mapper/vg0-brgvos..." 8 80
+        echo "Running $MKFS -L brgvos /dev/mapper/vg0-brgvos..." >>"$LOG"
+        $MKFS -L brgvos /dev/mapper/vg0-brgvos >>"$LOG" 2>&1; rv=$?
+        if [ "$rv" -ne 0 ]; then
+          DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
+failed to create filesystem $fstype on $dev!\ncheck $LOG for errors." "${MSGBOXSIZE}"
+          DIE 1
+        fi
+        TITLE="Check $LOG for details ..."
+        INFOBOX "Creating filesystem swap on /dev/mapper/vg0-swap..." 8 80
+        echo "Running $MKFS -L brgvos /dev/mapper/vg0-swap..." >>"$LOG"
+        mkswap /dev/mapper/vg0-swap >>"$LOG" 2>&1; rv=$?
+        if [ "$rv" -ne 0 ]; then
+          DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
+failed to create filesystem swap on /dev/mapper/vg0-swap!\ncheck $LOG for errors." "${MSGBOXSIZE}"
+          DIE 1
+        fi
+        # Prepare LVM with Crypt
+      elif [ "$fstype" = "btrfs_lvm_crypt" ]; then
+        PASSPHRASE=$(get_option USERPASSWORD)
+        {
+          echo -n "$PASSPHRASE" | cryptsetup luksFormat --type=luks1 "$dev"
+          echo -n "$PASSPHRASE" | cryptsetup luksOpen "$dev" crypt -d -
+          pvcreate /dev/mapper/crypt
+          vgcreate vg0 /dev/mapper/crypt
+          lvcreate --yes --name swap -L "$swap_need" vg0
+          lvcreate --yes --name brgvos -l +100%FREE vg0
+        } >>"$LOG" 2>&1
+        TITLE="Check $LOG for details .."
+        INFOBOX "Creating filesystem btrfs în /dev/mapper/vg0-brgvos..." 8 80
+        echo "Running $MKFS -L brgvos /dev/mapper/vg0-brgvos..." >>"$LOG"
+        $MKFS -L brgvos /dev/mapper/vg0-brgvos >>"$LOG" 2>&1; rv=$?
+        if [ "$rv" -ne 0 ]; then
+          DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
+failed to create filesystem btrfs on /dev/mapper/vg0-brgvos!\nCheck $LOG for errors." "${MSGBOXSIZE}"
+          DIE 1
+        fi
+        TITLE="Check $LOG for details ..."
+        INFOBOX "Creating filesystem swap în /dev/mapper/vg0-swap..." 8 80
+        echo "Running $MKFS -L brgvos /dev/mapper/vg0-swap..." >>"$LOG"
+        mkswap /dev/mapper/vg0-swap >>"$LOG" 2>&1; rv=$?
+        if [ "$rv" -ne 0 ]; then
+          DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
+failed to create filesystem swap on /dev/mapper/vg0-swap!\nCheck $LOG for errors." "${MSGBOXSIZE}"
+          DIE 1
+        fi
+      else
+        TITLE="Check $LOG for details ..."
+        INFOBOX "Creating filesystem $fstype on $dev for $mntpt ..." 8 80
+        echo "Running $MKFS $dev..." >>"$LOG"
+        $MKFS "$dev" >>"$LOG" 2>&1; rv=$?
+        if [ "$rv" -ne 0 ]; then
+          DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
+failed to create filesystem $fstype on $dev!\nCheck $LOG for errors." "${MSGBOXSIZE}"
+          DIE 1
+        fi
+      fi
+    fi
+    # Mount rootfs the first one.
+    [ "$mntpt" != "/" ] && continue
+    mkdir -p "$TARGETDIR"
+    if [ "$fstype" = "btrfs_lvm" ] || [ "$fstype" = "btrfs_lvm_crypt" ]; then
+      echo "Mounting /dev/mapper/vg0-brgvos on $mntpt (btrfs)..." >>"$LOG"
+      mount /dev/mapper/vg0-brgvos "$TARGETDIR" >>"$LOG" 2>&1
+      ROOTFS=$dev
+    else
+      echo "Mounting $dev on $mntpt ($fstype)..." >>"$LOG"
+      mount -t "$fstype" "$dev" "$TARGETDIR" >>"$LOG" 2>&1
+      ROOTFS=$dev
+      if [ $? -ne 0 ]; then
+        DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
+failed to mount $dev on ${mntpt}! check $LOG for errors." "${MSGBOXSIZE}"
+        DIE 1
+      fi
+    fi
+    # Check if was mounted HDD or SSD
+    disk_name=$(lsblk -ndo pkname "$dev")
+    disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
+    # Prepare options for mount command for HDD or SSD
+    if [ "$disk_type" -eq 1 ]; then
+      # options for HDD
+      options="compress=zstd,noatime,space_cache=v2"
+      echo "Options used for mount and fstab $options" >>"$LOG"
+    else
+      # options for SSD
+      options="compress=zstd,noatime,space_cache=v2,discard=async,ssd"
+      echo "Options used for mount and fstab $options" >>"$LOG"
+    fi
+    # Create subvolume @, @home, @var_log, @var_lib and @snapshots
+    if [ "$fstype" = "btrfs" ]; then
+    {
+      btrfs subvolume create "$TARGETDIR"/@
+      btrfs subvolume create "$TARGETDIR"/@home
+      btrfs subvolume create "$TARGETDIR"/@var_log
+      btrfs subvolume create "$TARGETDIR"/@var_lib
+      btrfs subvolume create "$TARGETDIR"/@snapshots
+      umount "$TARGETDIR"
+      mount -t "$fstype" -o "$options",subvol=@ "$dev" "$TARGETDIR"
+      mkdir -p "$TARGETDIR"/{home,var/log,var/lib,.snapshots}
+      mount -t "$fstype" -o "$options",subvol=@home "$dev" "$TARGETDIR"/home
+      mount -t "$fstype" -o "$options",subvol=@snapshots "$dev" "$TARGETDIR"/.snapshots
+      mount -t "$fstype" -o "$options",subvol=@var_log "$dev" "$TARGETDIR"/var/log
+      mount -t "$fstype" -o "$options",subvol=@var_lib "$dev" "$TARGETDIR"/var/lib
+    } >>"$LOG" 2>&1
+    elif [ "$fstype" = "btrfs_lvm" ] || [ "$fstype" = "btrfs_lvm_crypt" ]; then
+      {
+        btrfs subvolume create "$TARGETDIR"/@
+        btrfs subvolume create "$TARGETDIR"/@home
+        btrfs subvolume create "$TARGETDIR"/@var_log
+        btrfs subvolume create "$TARGETDIR"/@var_lib
+        btrfs subvolume create "$TARGETDIR"/@snapshots
+        umount "$TARGETDIR"
+        mount -t btrfs -o "$options",subvol=@ /dev/mapper/vg0-brgvos "$TARGETDIR"
+        mkdir -p "$TARGETDIR"/{home,var/log,var/lib,.snapshots}
+        mount -t btrfs -o "$options",subvol=@home /dev/mapper/vg0-brgvos "$TARGETDIR"/home
+        mount -t btrfs -o "$options",subvol=@snapshots /dev/mapper/vg0-brgvos "$TARGETDIR"/.snapshots
+        mount -t btrfs -o "$options",subvol=@var_log /dev/mapper/vg0-brgvos "$TARGETDIR"/var/log
+        mount -t btrfs -o "$options",subvol=@var_lib /dev/mapper/vg0-brgvos "$TARGETDIR"/var/lib
+      } >>"$LOG" 2>&1
+    fi
+    # Add entry to target fstab
+    uuid=$(blkid -o value -s UUID "$dev")
+    if [ "$fstype" = "f2fs" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "btrfs_lvm" ] \
+      || [ "$fstype" = "btrfs_lvm_crypt" ] || [ "$fstype" = "xfs" ]; then
+      fspassno=0
+    else
+      fspassno=1
+    fi
+    if [ "$fstype" = "btrfs" ]; then
+    {
+      echo "UUID=$uuid / $fstype $options,subvol=@ 0 $fspassno"
+      echo "UUID=$uuid /home $fstype $options,subvol=@home 0 $fspassno"
+      echo "UUID=$uuid /.snapshots $fstype $options,subvol=@snapshots 0 $fspassno"
+      echo "UUID=$uuid /var/log $fstype $options,subvol=@var_log 0 $fspassno"
+      echo "UUID=$uuid /var/lib $fstype $options,subvol=@var_lib 0 $fspassno"
+    } >>"$TARGET_FSTAB"
+    elif [ "$fstype" = "btrfs_lvm" ] || [ "$fstype" = "btrfs_lvm_crypt" ]; then
+      ROOT_UUID=$(blkid -s UUID -o value /dev/mapper/vg0-brgvos)
+      SWAP_UUID=$(blkid -s UUID -o value /dev/mapper/vg0-swap)
+    {
+      echo "UUID=$ROOT_UUID / btrfs $options,subvol=@ 0 $fspassno"
+      echo "UUID=$ROOT_UUID /home btrfs $options,subvol=@home 0 $fspassno"
+      echo "UUID=$ROOT_UUID /.snapshots btrfs $options,subvol=@snapshots 0 $fspassno"
+      echo "UUID=$ROOT_UUID /var/log btrfs $options,subvol=@var_log 0 $fspassno"
+      echo "UUID=$ROOT_UUID /var/lib btrfs $options,subvol=@var_lib 0 $fspassno"
+      echo "UUID=$SWAP_UUID none swap defaults 0 $fspassno"
+    } >>"$TARGET_FSTAB"
+    else
+      echo "UUID=$uuid $mntpt $fstype defaults 0 $fspassno" >>"$TARGET_FSTAB"
+    fi
+  done
+
+  # mount all filesystems in target rootfs
+  mnts=$(grep -E '^MOUNTPOINT .*' "$CONF_FILE" | sort -k 5)
+  set -- "${mnts}"
+  while [ $# -ne 0 ]; do
+    dev=$2; fstype=$3; mntpt="$5"
+    shift 6
+    [ "$mntpt" = "/" ] || [ "$fstype" = "swap" ] && continue
+    mkdir -p "${TARGETDIR}""${mntpt}"
+    echo "Mounting $dev on $mntpt ($fstype)..." >>"$LOG"
+    mount -t "$fstype" "$dev" "${TARGETDIR}""${mntpt}" >>"$LOG" 2>&1
+    if [ $? -ne 0 ]; then
+      DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
+failed to mount $dev on $mntpt! check $LOG for errors." "${MSGBOXSIZE}"
+      DIE
+    fi
+    # Add entry to target fstab
+    uuid=$(blkid -o value -s UUID "$dev")
+    if [ "$fstype" = "f2fs" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "xfs" ]; then
+      fspassno=0
+    else
+      fspassno=2
+    fi
+    echo "UUID=$uuid $mntpt $fstype defaults 0 $fspassno" >>"$TARGET_FSTAB"
+  done
+}
+
+# Function to mount filesystems
+mount_filesystems() {
+  for f in sys proc dev; do
+    [ ! -d "$TARGETDIR"/"$f" ] && mkdir "$TARGETDIR"/"$f"
+    echo "Mounting $TARGETDIR/$f..." >>"$LOG"
+    mount --rbind /"$f" "$TARGETDIR"/"$f" >>"$LOG" 2>&1
+  done
+}
+
+# Function to umount filesystems
+umount_filesystems() {
+  # Define some variables locally
+  local mnts
+  mnts="$(grep -E '^MOUNTPOINT .* swap .*$' "$CONF_FILE" | sort -r -k 5)"
+
+  set -- "${mnts}"
+  while [ $# -ne 0 ]; do
+    local dev=$2; local fstype=$3
+    shift 6
+    if [ "$fstype" = "swap" ]; then
+      echo "Disabling swap space on $dev..." >>"$LOG"
+      swapoff "$dev" >>"$LOG" 2>&1
+      continue
+    fi
+  done
+  echo "Unmounting $TARGETDIR..." >>"$LOG"
+  umount -R "$TARGETDIR" >>"$LOG" 2>&1
+}
+
+# Function to count progress copy files
+log_and_count() {
+  # Define some variables locally
+  local progress whole tenth line
+
+  while read line; do
+    echo "$line" >>"$LOG"
+    copy_count=$((copy_count + 1))
+    progress=$((1000 * copy_count / copy_total))
+    if [ "$progress" != "$copy_progress" ]; then
+      whole=$((progress / 10))
+      tenth=$((progress % 10))
+      printf "Progress: %d.%d%% (%d of %d files)\n" "$whole" "$tenth" "$copy_count" "$copy_total"
+      copy_progress=$progress
+    fi
+  done
+}
+
+# Function for copy rootfs
+copy_rootfs() {
+  # Define some variables locally
+  local tar_in status copy_total
+
+  tar_in="--create --one-file-system --xattrs"
+  TITLE="Check $LOG for details ..."
+  INFOBOX "Counting files, please be patient ..." 4 80
+  copy_total=$(tar "${tar_in}" -v -f /dev/null / 2>/dev/null | wc -l)
+  export copy_total copy_count=0 copy_progress=
+  clear
+  tar "${tar_in}" -f - / 2>/dev/null | \
+    tar --extract --xattrs --xattrs-include='*' --preserve-permissions -v -f - -C "$TARGETDIR" | \
+    log_and_count | \
+    DIALOG --title "${TITLE}" \
+      --progressbox "Copying live image to target rootfs." 5 80
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    DIE 1
+  fi
+  unset copy_total copy_count copy_percent
+}
+
+# Function for install packages
+install_packages() {
+  # Define some variables locally
+  local _grub _syspkg _arch status
+  _grub=
+  _syspkg=
+
+  if [ "$(get_option BOOTLOADER)" != none ]; then
+    if [ -n "$EFI_SYSTEM" ]; then
+      if [ "$EFI_FW_BITS" -eq 32 ]; then
+        _grub="grub-i386-efi"
+      else
+        _grub="grub-x86_64-efi"
+      fi
+    else
+      _grub="grub"
+    fi
+  fi
+
+  _syspkg="base-system"
+
+  mkdir -p "$TARGETDIR"/var/db/xbps/keys "$TARGETDIR"/usr/share
+  cp -a /usr/share/xbps.d "$TARGETDIR"/usr/share/
+  cp /var/db/xbps/keys/*.plist "$TARGETDIR"/var/db/xbps/keys
+  if [ -n "$MIRROR_DONE" ]; then
+    mkdir -p "$TARGETDIR"/etc
+    cp -a /etc/xbps.d "$TARGETDIR"/etc
+  fi
+  mkdir -p "$TARGETDIR"/boot/grub
+
+  _arch=$(xbps-uhelper arch)
+
+  stdbuf -oL env XBPS_ARCH="${_arch}" \
+    xbps-install  -r "$TARGETDIR" -SyU "${_syspkg}" "${_grub}" 2>&1 | \
+    DIALOG --title "Installing base system packages..." \
+      --programbox 24 80
+  if [ $? -ne 0 ]; then
+    DIE 1
+  fi
+  xbps-reconfigure -r "$TARGETDIR" -f base-files >/dev/null 2>&1
+  stdbuf -oL chroot "$TARGETDIR" xbps-reconfigure -a 2>&1 | \
+    DIALOG --title "Configuring base system packages..." --programbox 24 80
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    DIE 1
+  fi
+}
+
+# Function with menu for choose services to start at boot
+menu_services() {
+  # Define some variables locally
+  local sv _status _checklist="" status
+
+  # filter out services that probably shouldn't be messed with
+  local sv_ignore='^(agetty-(tty[1-9]|generic|serial|console)|udevd|sulogin)$'
+  find "$TARGETDIR"/etc/runit/runsvdir/default -mindepth 1 -maxdepth 1 -xtype d -printf '%f\n' | \
+    grep -Ev "$sv_ignore" | sort -u > "$TARGET_SERVICES"
+  while true; do
+    while read -r sv; do
+      if [ -n "$sv" ]; then
+        if grep -qx "$sv" "$TARGET_SERVICES" 2>/dev/null; then
+          _status=on
+        else
+          _status=off
+        fi
+        _checklist+=" ${sv} ${sv} ${_status}"
+      fi
+    done < <(find "$TARGETDIR"/etc/sv -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | grep -Ev "$sv_ignore" | sort -u)
+    DIALOG --no-tags --checklist "Select services to enable:" 20 60 18 "${_checklist}"
+    status=$?
+    if [ "$status" -eq 0 ]; then
+      comm -13 "$TARGET_SERVICES" <(cat "$ANSWER" | tr ' ' '\n') | while read -r sv; do
+        enable_service "$sv"
+      done
+      comm -23 "$TARGET_SERVICES" <(cat "$ANSWER" | tr ' ' '\n') | while read -r sv; do
+        disable_service "$sv"
+      done
+      break
+    else
+      return
+    fi
+  done
+}
+
+# Function to enable services for selected services on menu_services
+enable_service() {
+  ln -sf "/etc/sv/$1" "$TARGETDIR/etc/runit/runsvdir/default/$1"
+}
+
+# Function to disable services for unselected services on menu_services
+disable_service() {
+  rm -f "$TARGETDIR/etc/runit/runsvdir/default/$1"
+}
+
+# Function for menu install
+menu_install() {
+  # Define some variables locally
+  local TO_REMOVE pkg USERLOGIN status
+
+  ROOTPASSWORD_DONE="$(get_option ROOTPASSWORD)"
+  BOOTLOADER_DONE="$(get_option BOOTLOADER)"
+
+  if [ -z "$ROOTPASSWORD_DONE" ]; then
+    DIALOG --msgbox "${BOLD}The root password has not been configured, \
+please do so before starting the installation.${RESET}" "${MSGBOXSIZE}"
+    return 1
+  elif [ -z "$BOOTLOADER_DONE" ]; then
+    DIALOG --msgbox "${BOLD}The disk to install the bootloader has not been \
+configured, please do so before starting the installation.${RESET}" "${MSGBOXSIZE}"
+    return 1
+  fi
+
+  # Validate filesystems after making sure bootloader is done,
+  # so that specific checks can be made based on the selection
+  validate_filesystems || return 1
+
+  if [ -z "$FILESYSTEMS_DONE" ]; then
+    DIALOG --msgbox "${BOLD}Required filesystems were not configured, \
+please do so before starting the installation.${RESET}" "${MSGBOXSIZE}"
+    return 1
+  fi
+
+  # Validate useraccount. All parameters must be set (name, password, login name, groups).
+  validate_useraccount
+
+  if [ -z "$USERACCOUNT_DONE" ]; then
+    DIALOG --yesno "${BOLD}The user account is not set up properly.${RESET}\n\n
+${BOLD}${RED}WARNING: no user will be created. You will only be able to login \
+with the root user in your new system.${RESET}\n\n
+${BOLD}Do you want to continue?${RESET}" 10 60 || return
+  fi
+
+  DIALOG --yesno "${BOLD}The following operations will be executed:${RESET}\n\n
+${BOLD}${TARGETFS}${RESET}\n
+${BOLD}${RED}WARNING: data on partitions will be COMPLETELY DESTROYED for NEW \
+FILESYSTEMS.${RESET}\n\n
+${BOLD}Do you want to continue?${RESET}" 20 80 || return
+  unset TARGETFS
+
+  # Create and mount filesystems
+  create_filesystems
+
+  SOURCE_DONE="$(get_option SOURCE)"
+  # If source not set use defaults.
+  if [ "$(get_option SOURCE)" = "local" ] || [ -z "$SOURCE_DONE" ]; then
+    copy_rootfs
+    . /etc/default/live.conf
+    rm -f "$TARGETDIR"/etc/motd
+    rm -f "$TARGETDIR"/etc/issue
+    rm -f "$TARGETDIR"/usr/sbin/brgvos-installer
+    # Remove modified sddm.conf to let sddm use the defaults.
+    rm -f "$TARGETDIR"/etc/sddm.conf
+    # Remove live user.
+    echo "Removing $USERNAME live user from targetdir ..." >>"$LOG"
+    chroot "$TARGETDIR" userdel -r "$USERNAME" >>"$LOG" 2>&1
+    rm -f "$TARGETDIR"/etc/sudoers.d/99-void-live
+    sed -i "s,GETTY_ARGS=\"--noclear -a $USERNAME\",GETTY_ARGS=\"--noclear\",g" "$TARGETDIR"/etc/sv/agetty-tty1/conf
+    TITLE="Check $LOG for details ..."
+    INFOBOX "Rebuilding initramfs for target ..." 4 80
+    echo "Rebuilding initramfs for target ..." >>$LOG
+    # mount required fs
+    mount_filesystems
+    chroot "$TARGETDIR" dracut --no-hostonly --add-drivers "ahci" --force >>"$LOG" 2>&1
+    INFOBOX "Removing temporary packages from target ..." 4 80
+    echo "Removing temporary packages from target ..." >>"$LOG"
+    TO_REMOVE="xmirror dialog"
+    # only remove espeakup and brltty if it wasn't enabled in the live environment
+    if ! [ -e "/var/service/espeakup" ]; then
+      TO_REMOVE+=" espeakup"
+    fi
+    # For Gnome have dependency Orca and this have dependency brltty
+    #if ! [ -e "/var/service/brltty" ]; then
+    #    TO_REMOVE+=" python3-brlapi brltty"
+    #fi
+    if [ "$(get_option BOOTLOADER)" = none ]; then
+      TO_REMOVE+=" grub-x86_64-efi grub-i386-efi grub"
+    fi
+    # uninstall separately to minimise errors
+    for pkg in $TO_REMOVE; do
+      xbps-remove -r "$TARGETDIR" -Ry "$pkg" >>"$LOG" 2>&1
+    done
+    rmdir "$TARGETDIR"/mnt/target
+  else
+    # mount required fs
+    mount_filesystems
+    # network install, use packages.
+    install_packages
+  fi
+
+  INFOBOX "Applying installer settings..." 4 80
+
+  # copy target fstab.
+  install -Dm644 "$TARGET_FSTAB" "$TARGETDIR"/etc/fstab
+  # Mount /tmp as tmpfs.
+  echo "tmpfs /tmp tmpfs defaults,nosuid,nodev 0 0" >> "$TARGETDIR"/etc/fstab
+
+
+  # set up keymap, locale, timezone, hostname, root passwd and user account.
+  set_keymap
+  set_locale
+  set_timezone
+  set_hostname
+  set_rootpassword
+  set_useraccount
+
+  # Copy /etc/skel files for root.
+  cp "$TARGETDIR"/etc/skel/.[bix]* "$TARGETDIR"/root
+
+  NETWORK_DONE="$(get_option NETWORK)"
+  # network settings for target
+  if [ -n "$NETWORK_DONE" ]; then
+    local net="$(get_option NETWORK)"
+    set -- ${net}
+    local _dev="$1" _type="$2" _ip="$3" _gw="$4" _dns1="$5" _dns2="$6"
+    if [ -z "$_type" ]; then
+      # network type empty??!!!
+      :
+    elif [ "$_type" = "dhcp" ]; then
+      if $(echo $_dev|egrep -q "^wl.*" 2>/dev/null); then
+        cp /etc/wpa_supplicant/wpa_supplicant.conf $TARGETDIR/etc/wpa_supplicant
+        enable_service wpa_supplicant
+      fi
+      enable_service dhcpcd
+    elif [ -n "$_dev" ] && [ "$_type" = "static" ]; then
+      # static IP through dhcpcd.
+      mv "$TARGETDIR"/etc/dhcpcd.conf "$TARGETDIR"/etc/dhcpcd.conf.orig
+      echo "# Static IP configuration set by the void-installer for $_dev." \
+        >"$TARGETDIR"/etc/dhcpcd.conf
+      {
+        echo "interface $_dev"
+        echo "static ip_address=$_ip"
+        echo "static routers=$_gw"
+        echo "static domain_name_servers=$_dns1 $_dns2"
+      } >>"$TARGETDIR"/etc/dhcpcd.conf
+      enable_service dhcpcd
+    fi
+  fi
+
+  if [ -d "$TARGETDIR"/etc/sudoers.d ]; then
+    USERLOGIN="$(get_option USERLOGIN)"
+    if [ -z "$(echo "$(get_option USERGROUPS)" | grep -w wheel)" ] && [ -n "$USERLOGIN" ]; then
+      # enable sudo for primary user USERLOGIN who is not member of wheel
+      echo "# Enable sudo for login '$USERLOGIN'" > "$TARGETDIR/etc/sudoers.d/$USERLOGIN"
+      echo "$USERLOGIN ALL=(ALL:ALL) ALL" >> "$TARGETDIR/etc/sudoers.d/$USERLOGIN"
+    else
+      # enable the sudoers entry for members of group wheel
+      echo "%wheel ALL=(ALL:ALL) ALL" > "$TARGETDIR/etc/sudoers.d/wheel"
+    fi
+    unset USERLOGIN
+  fi
+
+  # clean up polkit rule - it's only useful in live systems
+  rm -f "$TARGETDIR"/etc/polkit-1/rules.d/void-live.rules
+
+  # enable text console for grub if chosen
+  if [ "$(get_option TEXTCONSOLE)" = "1" ]; then
+    sed -i "$TARGETDIR"/etc/default/grub \
+      -e 's|#\(GRUB_TERMINAL_INPUT\).*|\1=console|' \
+      -e 's|#\(GRUB_TERMINAL_OUTPUT\).*|\1=console|'
+  fi
+
+  # install bootloader.
+  set_bootloader
+
+  # menu for enabling services
+  menu_services
+
+  sync && sync && sync
+
+  # unmount all filesystems.
+  umount_filesystems
+
+  # installed successfully.
+  DIALOG --yesno "${BOLD}BRGV-OS Linux has been installed successfully!${RESET}\n
+Do you want to reboot the system?" "${YESNOSIZE}"
+  status=$?
+  if [ "$status" -eq 0 ]; then
+    shutdown -r now
+  else
+    return
+  fi
+}
+
+# Function for menu Source
+menu_source() {
+  # Define some variables locally
+  local src=
+
+  DIALOG --title " Select installation source " \
+    --menu "$MENULABEL" 8 70 0 \
+    "Local" "Packages from ISO image" \
+    "Network" "Base system only, downloaded from official repository"
+  case "$(cat "$ANSWER")" in
+  "Local") src="local";;
+  "Network") src="net";
+    if [ -z "$NETWORK_DONE" ]; then
+      if test_network; then
+        menu_network
+      fi
+    fi;;
+  *) return 1;;
+  esac
+  SOURCE_DONE=1
+  set_option SOURCE "$src"
+}
+
+# Function for menu Mirror
+menu_mirror() {
+  xmirror 2>>"$LOG" && MIRROR_DONE=1
+}
+
+# Function for main Menu
+menu() {
+  # Define some variables locally
+  local AFTER_HOSTNAME DEFITEM
+  if [ -z "$DEFITEM" ]; then
+    DEFITEM="Keyboard"
+  fi
+
+  if xbps-uhelper arch | grep -qe '-musl$'; then
+    AFTER_HOSTNAME="Timezone"
+    DIALOG --default-item "$DEFITEM" \
+      --extra-button --extra-label "Settings" \
+      --title " BRGV-OS Linux installation menu " \
+      --menu "$MENULABEL" 10 80 0 \
+      "Keyboard" "Set system keyboard" \
+      "Network" "Set up the network" \
+      "Source" "Set source installation" \
+      "Mirror" "Select XBPS mirror" \
+      "Hostname" "Set system hostname" \
+      "Timezone" "Set system time zone" \
+      "RootPassword" "Set system root password" \
+      "UserAccount" "Set primary user name and password" \
+      "BootLoader" "Set disk to install bootloader" \
+      "Partition" "Partition disk(s)" \
+      "Filesystems" "Configure filesystems and mount points" \
+      "Install" "Start installation with saved settings" \
+      "Exit" "Exit installation"
+  else
+    AFTER_HOSTNAME="Locale"
+    DIALOG --default-item "$DEFITEM" \
+      --extra-button --extra-label "Settings" \
+      --title " BRGV-OS Linux installation menu " \
+      --menu "$MENULABEL" 10 80 0 \
+      "Keyboard" "Set system keyboard" \
+      "Network" "Set up the network" \
+      "Source" "Set source installation" \
+      "Mirror" "Select XBPS mirror" \
+      "Hostname" "Set system hostname" \
+      "Locale" "Set system locale" \
+      "Timezone" "Set system time zone" \
+      "RootPassword" "Set system root password" \
+      "UserAccount" "Set primary user name and password" \
+      "BootLoader" "Set disk to install bootloader" \
+      "Partition" "Partition disk(s)" \
+      "Filesystems" "Configure filesystems and mount points" \
+      "Install" "Start installation with saved settings" \
+      "Exit" "Exit installation"
+  fi
+
+  if [ $? -eq 3 ]; then
+    # Show settings
+    cp "$CONF_FILE" /tmp/conf_hidden.$$;
+    sed -i "s/^ROOTPASSWORD .*/ROOTPASSWORD <-hidden->/" /tmp/conf_hidden.$$
+    sed -i "s/^USERPASSWORD .*/USERPASSWORD <-hidden->/" /tmp/conf_hidden.$$
+    DIALOG --title "Saved settings for installation" --textbox /tmp/conf_hidden.$$ 14 60
+    rm /tmp/conf_hidden.$$
+    return
+  fi
+
+  case $(cat "$ANSWER") in
+  "Keyboard") menu_keymap && [ -n "$KEYBOARD_DONE" ] && DEFITEM="Network";;
+  "Network") menu_network && [ -n "$NETWORK_DONE" ] && DEFITEM="Source";;
+  "Source") menu_source && [ -n "$SOURCE_DONE" ] && DEFITEM="Mirror";;
+  "Mirror") menu_mirror && [ -n "$MIRROR_DONE" ] && DEFITEM="Hostname";;
+  "Hostname") menu_hostname && [ -n "$HOSTNAME_DONE" ] && DEFITEM="$AFTER_HOSTNAME";;
+  "Locale") menu_locale && [ -n "$LOCALE_DONE" ] && DEFITEM="Timezone";;
+  "Timezone") menu_timezone && [ -n "$TIMEZONE_DONE" ] && DEFITEM="RootPassword";;
+  "RootPassword") menu_rootpassword && [ -n "$ROOTPASSWORD_DONE" ] && DEFITEM="UserAccount";;
+  "UserAccount") menu_useraccount && [ -n "$USERLOGIN_DONE" ] && [ -n "$USERPASSWORD_DONE" ] \
+    && DEFITEM="BootLoader";;
+  "BootLoader") menu_bootloader && [ -n "$BOOTLOADER_DONE" ] && DEFITEM="Partition";;
+  "Partition") menu_partitions && [ -n "$PARTITIONS_DONE" ] && DEFITEM="Filesystems";;
+  "Filesystems") menu_filesystems && [ -n "$FILESYSTEMS_DONE" ] && DEFITEM="Install";;
+  "Install") menu_install;;
+  "Exit") DIE;;
+  *) DIALOG --yesno "Abort Installation?" "${YESNOSIZE}" && DIE
+  esac
+}
+
+if ! command -v dialog >/dev/null; then
+  echo "ERROR: missing dialog command, exiting..."
+  exit 1
+fi
+
+if [ "$(id -u)" != "0" ]; then
+  echo "brgvos-installer must run as root" 1>&2
+  exit 1
+fi
+
+#
+# main()
+#
+DIALOG --title "${BOLD}${RED} Enter ... ${RESET}" --msgbox "\n
+Welcome to the BRGV-OS Linux installation. A simple and minimal \
+Linux distribution based by Void Linux, made from scratch and built from the source package tree \
+available for XBPS, a new alternative binary package system.\n\n
+The installation should be pretty
+ straightforward. If you are in trouble \
+please join us at ${BOLD}#voidlinux${RESET} on ${BOLD}irc.libera.chat${RESET}.\n\n
+${BOLD}https://www.voidlinux.org${RESET}\n\n" 16 80
+
+while true; do
+  menu
+done
+
+exit 0
