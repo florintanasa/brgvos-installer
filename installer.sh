@@ -1912,7 +1912,7 @@ menu_mirror() {
 # Function for main Menu
 menu() {
   # Define some variables locally
-  local AFTER_HOSTNAME DEFITEM
+  local AFTER_HOSTNAME
   if [ -z "$DEFITEM" ]; then
     DEFITEM="Keyboard"
   fi
