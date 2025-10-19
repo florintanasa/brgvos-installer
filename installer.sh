@@ -29,51 +29,51 @@
 # Set the color for dialog interface
 dialogRcFile="$HOME/.dialogrc"
 
-# This function create file .dialogrc
+# Function to create file .dialogrc
 sh_create_dialogrc() {
   cat > "$dialogRcFile" <<-EOF
-  screen_color = (white,black,off)
-  dialog_color = (white,black,off)
-  title_color = (cyan,black,on)
-  border_color = dialog_color
-  shadow_color = (black,black,on)
-  button_inactive_color = dialog_color
-  button_key_inactive_color = dialog_color
-  button_label_inactive_color = dialog_color
-  button_active_color = (white,cyan,on)
-  button_key_active_color = button_active_color
-  button_label_active_color = (black,cyan,on)
-  tag_key_selected_color = (white,cyan,on)
-  item_selected_color = tag_key_selected_color
-  form_text_color = (BLUE,black,ON)
-  form_item_readonly_color = (green,black,on)
-  itemhelp_color = (white,cyan,off)
-  inputbox_color = dialog_color
-  inputbox_border_color = dialog_color
-  searchbox_color = dialog_color
-  searchbox_title_color = title_color
-  searchbox_border_color = border_color
-  position_indicator_color = title_color
-  menubox_color = dialog_color
-  menubox_border_color = border_color
-  item_color = dialog_color
-  tag_color = title_color
-  tag_selected_color = button_label_active_color
-  tag_key_color = button_key_inactive_color
-  check_color = dialog_color
-  check_selected_color = button_active_color
-  uarrow_color = screen_color
-  darrow_color = screen_color
-  form_active_text_color = button_active_color
-  gauge_color = title_color
-  border2_color = dialog_color
-  searchbox_border2_color = dialog_color
-  menubox_border2_color = dialog_color
-  separate_widget = ''
-  tab_len = 0
-  visit_items = off
-  use_shadow = off
-  use_colors = on
+screen_color = (white,black,off)
+dialog_color = (white,black,off)
+title_color = (cyan,black,on)
+border_color = dialog_color
+shadow_color = (black,black,on)
+button_inactive_color = dialog_color
+button_key_inactive_color = dialog_color
+button_label_inactive_color = dialog_color
+button_active_color = (white,cyan,on)
+button_key_active_color = button_active_color
+button_label_active_color = (black,cyan,on)
+tag_key_selected_color = (white,cyan,on)
+item_selected_color = tag_key_selected_color
+form_text_color = (BLUE,black,ON)
+form_item_readonly_color = (green,black,on)
+itemhelp_color = (white,cyan,off)
+inputbox_color = dialog_color
+inputbox_border_color = dialog_color
+searchbox_color = dialog_color
+searchbox_title_color = title_color
+searchbox_border_color = border_color
+position_indicator_color = title_color
+menubox_color = dialog_color
+menubox_border_color = border_color
+item_color = dialog_color
+tag_color = title_color
+tag_selected_color = button_label_active_color
+tag_key_color = button_key_inactive_color
+check_color = dialog_color
+check_selected_color = button_active_color
+uarrow_color = screen_color
+darrow_color = screen_color
+form_active_text_color = button_active_color
+gauge_color = title_color
+border2_color = dialog_color
+searchbox_border2_color = dialog_color
+menubox_border2_color = dialog_color
+separate_widget = ''
+tab_len = 0
+visit_items = off
+use_shadow = off
+use_colors = on
 EOF
 }
 
@@ -120,9 +120,10 @@ touch -f $LOG
 
 # Set the name for config file using by installer
 CONF_FILE=/tmp/.brgvos-installer.conf
+
 # Check if exist the file is not create the file
-if [ ! -f "$CONF_FILE" ]; then
-  touch -f "$CONF_FILE"
+if [ ! -f $CONF_FILE ]; then
+  touch -f $CONF_FILE
 fi
 
 # Set variables with the temporal files used by installer
@@ -143,7 +144,7 @@ fi
 if [ -e /sys/firmware/efi/systab ]; then
   EFI_SYSTEM=1
   EFI_FW_BITS=$(cat /sys/firmware/efi/fw_platform_size)
-  if [ "$EFI_FW_BITS" -eq 32 ]; then
+  if [ $EFI_FW_BITS -eq 32 ]; then
     EFI_TARGET=i386-efi
   else
     EFI_TARGET=x86_64-efi
@@ -174,10 +175,10 @@ YESNOSIZE="$INPUTSIZE"
 WIDGET_SIZE="10 70"
 
 DIALOG() {
-  rm -f "$ANSWER"
+  rm -f $ANSWER
   dialog --colors --keep-tite --no-shadow --no-mouse \
     --backtitle "${BOLD}${WHITE}BRGV-OS Linux installation -- https://github.com/florintanasa/brgvos-void (@@MKLIVE_VERSION@@)${RESET}" \
-    --cancel-label "Back" --aspect 20 "$@" 2>"$ANSWER"
+    --cancel-label "Back" --aspect 20 "$@" 2>$ANSWER
   return $?
 }
 
@@ -191,35 +192,29 @@ INFOBOX() {
 # Function used for clean exit from script
 DIE() {
   rval=$1
-  # Check variable rval is empty/or have zero length and if is true set rval=0
   [ -z "$rval" ] && rval=0
-  # Clear terminal screen
   clear
-  # Remove temporal files
-  rm -f "$ANSWER" "$TARGET_FSTAB" "$TARGET_SERVICES"
-  # re-enable printk
+  rm -f $ANSWER $TARGET_FSTAB $TARGET_SERVICES
+  # reenable printk
   if [ -w /proc/sys/kernel/printk ]; then
     echo 4 >/proc/sys/kernel/printk
   fi
-  # Call function to unmount filesystems
   umount_filesystems
-  # Call function to remove .dialogrc
   cleanup
-  # Close the script and exit with code 0 for success and with 1-255 for errors
-  exit "$rval"
+  exit $rval
 }
 
 # Function used to save chosen options in configure file
 set_option() {
-  if grep -Eq "^${1} .*" "$CONF_FILE"; then
-    sed -i -e "/^${1} .*/d" "$CONF_FILE"
+  if grep -Eq "^${1} .*" $CONF_FILE; then
+    sed -i -e "/^${1} .*/d" $CONF_FILE
   fi
-  echo "${1} ${2}" >>"$CONF_FILE"
+  echo "${1} ${2}" >>$CONF_FILE
 }
 
-# Function used to load saved chosen options from configure file
+Function used to load saved chosen options from configure file
 get_option() {
-  grep -E "^${1} .*" "$CONF_FILE" | sed -e "s|^${1} ||"
+  grep -E "^${1} .*" $CONF_FILE | sed -e "s|^${1} ||"
 }
 
 # ISO-639 language names for locales
@@ -420,33 +415,33 @@ iso3166_country() {
 
 # Function to display the disc(s) size in GB and sector size from system
 show_disks() {
-  # Define some variables locally
   local dev size sectorsize gbytes
+
   # IDE
   for dev in $(ls /sys/block|grep -E '^hd'); do
-    if [ "$(cat /sys/block/"$dev"/device/media)" = "disk" ]; then
+    if [ "$(cat /sys/block/$dev/device/media)" = "disk" ]; then
       # Find out nr sectors and bytes per sector;
       echo "/dev/$dev"
-      size=$(cat /sys/block/"$dev"/size)
-      sectorsize=$(cat /sys/block/"$dev"/queue/hw_sector_size)
-      gbytes="$((size * sectorsize / 1024 / 1024 / 1024))"
+      size=$(cat /sys/block/$dev/size)
+      sectorsize=$(cat /sys/block/$dev/queue/hw_sector_size)
+      gbytes="$(($size * $sectorsize / 1024 / 1024 / 1024))"
       echo "size:${gbytes}GB;sector_size:$sectorsize"
     fi
   done
   # SATA/SCSI and Virtual disks (virtio)
   for dev in $(ls /sys/block|grep -E '^([sv]|xv)d|mmcblk|nvme'); do
     echo "/dev/$dev"
-    size=$(cat /sys/block/"$dev"/size)
-    sectorsize=$(cat /sys/block/"$dev"/queue/hw_sector_size)
-    gbytes="$((size * sectorsize / 1024 / 1024 / 1024))"
+    size=$(cat /sys/block/$dev/size)
+    sectorsize=$(cat /sys/block/$dev/queue/hw_sector_size)
+    gbytes="$(($size * $sectorsize / 1024 / 1024 / 1024))"
     echo "size:${gbytes}GB;sector_size:$sectorsize"
   done
   # cciss(4) devices
   for dev in $(ls /dev/cciss 2>/dev/null|grep -E 'c[0-9]d[0-9]$'); do
     echo "/dev/cciss/$dev"
-    size=$(cat /sys/block/cciss\!"$dev"/size)
-    sectorsize=$(cat /sys/block/cciss\!"$dev"/queue/hw_sector_size)
-    gbytes="$((size * sectorsize / 1024 / 1024 / 1024))"
+    size=$(cat /sys/block/cciss\!$dev/size)
+    sectorsize=$(cat /sys/block/cciss\!$dev/queue/hw_sector_size)
+    gbytes="$(($size * $sectorsize / 1024 / 1024 / 1024))"
     echo "size:${gbytes}GB;sector_size:$sectorsize"
   done
 }
@@ -454,34 +449,31 @@ show_disks() {
 # Function to get fs type from configuration if available.
 # This ensures that, the user is shown the proper fs type if they install the system.
 get_partfs() {
-  # Define some variables locally
-  local part default fstype
-
-  part="$1"
-  default="${2:-none}"
-  fstype=$(grep "MOUNTPOINT ${part} " "$CONF_FILE"|awk '{print $3}')
-
+  # Get fs type from configuration if available. This ensures
+  # that the user is shown the proper fs type if they install the system.
+  local part="$1"
+  local default="${2:-none}"
+  local fstype=$(grep "MOUNTPOINT ${part} " "$CONF_FILE"|awk '{print $3}')
   echo "${fstype:-$default}"
 }
 
 # Function show partitions
 show_partitions() {
-  # Define some variables locally
-  local disk fstype fssize p part
+  local dev fstype fssize p part
 
   set -- $(show_disks)
   while [ $# -ne 0 ]; do
-    disk=$(basename "$1")
+    disk=$(basename $1)
     shift 2
     # ATA/SCSI/SATA
-    for p in /sys/block/"$disk"/$disk*; do
-      if [ -d "$p" ]; then
+    for p in /sys/block/$disk/$disk*; do
+      if [ -d $p ]; then
         part=$(basename $p)
-        fstype=$(lsblk -nfr /dev/"$part"|awk '{print $2}'|head -1)
+        fstype=$(lsblk -nfr /dev/$part|awk '{print $2}'|head -1)
         [ "$fstype" = "iso9660" ] && continue
         [ "$fstype" = "crypto_LUKS" ] && continue
         [ "$fstype" = "LVM2_member" ] && continue
-        fssize=$(lsblk -nr /dev/"$part"|awk '{print $4}'|head -1)
+        fssize=$(lsblk -nr /dev/$part|awk '{print $4}'|head -1)
         echo "/dev/$part"
         echo "size:${fssize:-unknown};fstype:$(get_partfs "/dev/$part")"
       fi
@@ -489,34 +481,34 @@ show_partitions() {
   done
   # Device Mapper
   for p in /dev/mapper/*; do
-    part=$(basename "$p")
+    part=$(basename $p)
     [ "${part}" = "live-rw" ] && continue
     [ "${part}" = "live-base" ] && continue
     [ "${part}" = "control" ] && continue
 
-    fstype=$(lsblk -nfr "$p"|awk '{print $2}'|head -1)
-    fssize=$(lsblk -nr "$p"|awk '{print $4}'|head -1)
+    fstype=$(lsblk -nfr $p|awk '{print $2}'|head -1)
+    fssize=$(lsblk -nr $p|awk '{print $4}'|head -1)
     echo "${p}"
     echo "size:${fssize:-unknown};fstype:$(get_partfs "$p")"
   done
   # Software raid (md)
   for p in $(ls -d /dev/md* 2>/dev/null|grep '[0-9]'); do
-    part=$(basename "$p")
-    if cat /proc/mdstat|grep -qw "$part"; then
-      fstype=$(lsblk -nfr /dev/"$part"|awk '{print $2}')
+    part=$(basename $p)
+    if cat /proc/mdstat|grep -qw $part; then
+      fstype=$(lsblk -nfr /dev/$part|awk '{print $2}')
       [ "$fstype" = "crypto_LUKS" ] && continue
       [ "$fstype" = "LVM2_member" ] && continue
-      fssize=$(lsblk -nr /dev/"$part"|awk '{print $4}')
+      fssize=$(lsblk -nr /dev/$part|awk '{print $4}')
       echo "$p"
       echo "size:${fssize:-unknown};fstype:$(get_partfs "$p")"
     fi
   done
   # cciss(4) devices
   for part in $(ls /dev/cciss 2>/dev/null|grep -E 'c[0-9]d[0-9]p[0-9]+'); do
-    fstype=$(lsblk -nfr /dev/cciss/"$part"|awk '{print $2}')
+    fstype=$(lsblk -nfr /dev/cciss/$part|awk '{print $2}')
     [ "$fstype" = "crypto_LUKS" ] && continue
     [ "$fstype" = "LVM2_member" ] && continue
-    fssize=$(lsblk -nr /dev/cciss/"$part"|awk '{print $4}')
+    fssize=$(lsblk -nr /dev/cciss/$part|awk '{print $4}')
     echo "/dev/cciss/$part"
     echo "size:${fssize:-unknown};fstype:$(get_partfs "/dev/cciss/$part")"
   done
@@ -531,67 +523,61 @@ show_partitions() {
 
 # Function to chose and set the filesystem used to format the device selected and mount point
 menu_filesystems() {
-  # Define some variables locally
-  local dev fstype fssize mntpoint reformat result
+  local dev fstype fssize mntpoint reformat
 
   while true; do
     DIALOG --ok-label "Change" --cancel-label "Done" \
       --title " Select the partition to edit " --menu "$MENULABEL" \
       ${MENUSIZE} $(show_partitions)
-    result=$?
-    [ "$result" -ne 0 ] && return
-    dev=$(cat "$ANSWER")
+    [ $? -ne 0 ] && return
 
+    dev=$(cat $ANSWER)
     DIALOG --title " Select the filesystem type for $dev " \
       --menu "$MENULABEL" ${MENUSIZE} \
       "btrfs" "Subvolume @,@home,@var_log,@var_lib,@snapshots" \
       "btrfs_lvm" "Subvolume @,@home,@var_log,@var_lib,@snapshots" \
       "btrfs_lvm_crypt" "Subvolume @,@home,@var_log,@var_lib,@snapshots" \
-      "ext2" "Linux ext2 (without journal)" \
-      "ext3" "Linux ext3 (journal)" \
-      "ext4" "Linux ext4 (journal)" \
+      "ext2" "Linux ext2 (fără jurnalizare)" \
+      "ext3" "Linux ext3 (cu jurnalizare)" \
+      "ext4" "Linux ext4 (cu jurnalizare)" \
       "f2fs" "Flash-Friendly Filesystem" \
       "swap" "Linux swap" \
       "vfat" "FAT32" \
       "xfs" "SGI's XFS"
-    result=$?
-    if [ "$result" -eq 0 ]; then
-      fstype=$(cat "$ANSWER")
+    if [ $? -eq 0 ]; then
+      fstype=$(cat $ANSWER)
     else
       continue
     fi
     if [ "$fstype" != "swap" ]; then
       DIALOG --inputbox "Please specify the mount point for $dev:" ${INPUTSIZE}
-      result=$?
-      if [ "$result" -eq 0 ]; then
-        mntpoint=$(cat "$ANSWER")
-      elif [ "$result" -eq 1 ]; then
+      if [ $? -eq 0 ]; then
+        mntpoint=$(cat $ANSWER)
+      elif [ $? -eq 1 ]; then
         continue
       fi
     else
       mntpoint=swap
     fi
     DIALOG --yesno "Do you want to create a new filesystem on $dev?" ${YESNOSIZE}
-    result=$?
-    if [ "$result" -eq 0 ]; then
+    if [ $? -eq 0 ]; then
       reformat=1
-    elif [ "$result" -eq 1 ]; then
+    elif [ $? -eq 1 ]; then
       reformat=0
     else
       continue
     fi
-    fssize=$(lsblk -nr "$dev"|awk '{print $4}')
+    fssize=$(lsblk -nr $dev|awk '{print $4}')
     set -- "$fstype" "$fssize" "$mntpoint" "$reformat"
-    if [[ -n "$1" && -n "$2" && -n "$3" && -n "$4" ]]; then
-      local bdev ddev
-      bdev=$(basename "$dev")
-      ddev=$(basename "$(dirname "$dev")")
+    if [ -n "$1" -a -n "$2" -a -n "$3" -a -n "$4" ]; then
+      local bdev=$(basename $dev)
+      local ddev=$(basename $(dirname $dev))
       if [ "$ddev" != "dev" ]; then
-        sed -i -e "/^MOUNTPOINT \/dev\/${ddev}\/${bdev} .*/d" "$CONF_FILE"
+        sed -i -e "/^MOUNTPOINT \/dev\/${ddev}\/${bdev} .*/d" $CONF_FILE
       else
-        sed -i -e "/^MOUNTPOINT \/dev\/${bdev} .*/d" "$CONF_FILE"
+        sed -i -e "/^MOUNTPOINT \/dev\/${bdev} .*/d" $CONF_FILE
       fi
-      echo "MOUNTPOINT $dev $1 $2 $3 $4" >>"$CONF_FILE"
+      echo "MOUNTPOINT $dev $1 $2 $3 $4" >>$CONF_FILE
     fi
   done
   FILESYSTEMS_DONE=1
@@ -599,22 +585,17 @@ menu_filesystems() {
 
 # Function for chose partition tool for modify partition table
 menu_partitions() {
-  # Define some variables locally
-  local device software result
-
   DIALOG --title " Select the disk to partition " \
     --menu "$MENULABEL" ${MENUSIZE} $(show_disks)
-  result=$?
-  if [ "$result" -eq 0 ]; then
-    device=$(cat "$ANSWER")
+  if [ $? -eq 0 ]; then
+    local device=$(cat $ANSWER)
 
     DIALOG --title " Select the software for partitioning " \
       --menu "$MENULABEL" ${MENUSIZE} \
       "cfdisk" "Easy to use" \
       "fdisk" "More advanced"
-    result=$?
-    if [ "$result" -eq 0 ]; then
-      software=$(cat "$ANSWER")
+    if [ $? -eq 0 ]; then
+      local software=$(cat $ANSWER)
 
       DIALOG --title "Modify Partition Table on $device" --msgbox "\n
 ${BOLD}${MAGENTA}${software}${RESET} ${BOLD}will be executed in disk $device.${RESET}\n\n
@@ -643,10 +624,9 @@ ${BOLD}${GREEN}INFO: Passphrase used for crypt is the user password.${RESET}\n\n
 ${BOLD}${RED}WARNING: Also for ${BOLD}${CYAN}'btrfs_lvm'${RESET} ${BOLD}${RED}and ${BOLD}${CYAN}'btrfs_lvm_crypt'${RESET}
 ${BOLD}${RED}installer created automatically ${BOLD}${BLUE}'Linux swap' ${BOLD}${RED}partition with rule 2*RAM.${RESET}\n\n
 ${RESET}\n" 23 80
-      result=$?
-      if [ "$result" -eq 0 ]; then
+      if [ $? -eq 0 ]; then
         while true; do
-          clear; "$software" "$device"; PARTITIONS_DONE=1
+          clear; $software $device; PARTITIONS_DONE=1
           break
         done
       else
@@ -656,21 +636,18 @@ ${RESET}\n" 23 80
   fi
 }
 
-# Function for chose and set keymap
 menu_keymap() {
-  local _keymaps _KEYMAPS result
-  _keymaps="$(find /usr/share/kbd/keymaps/ -type f -iname "*.map.gz" -printf "%f\n" | sed 's|.map.gz||g' | sort)"
-  _KEYMAPS=
+  local _keymaps="$(find /usr/share/kbd/keymaps/ -type f -iname "*.map.gz" -printf "%f\n" | sed 's|.map.gz||g' | sort)"
+  local _KEYMAPS=
 
   for f in ${_keymaps}; do
     _KEYMAPS="${_KEYMAPS} ${f} -"
   done
   while true; do
     DIALOG --title " Select your keymap " --menu "$MENULABEL" 14 70 14 ${_KEYMAPS}
-    result=$?
-    if [ "$result" -eq 0 ]; then
-      set_option KEYMAP "$(cat "$ANSWER")"
-      loadkeys "$(cat "$ANSWER")"
+    if [ $? -eq 0 ]; then
+      set_option KEYMAP "$(cat $ANSWER)"
+      loadkeys "$(cat $ANSWER)"
       KEYBOARD_DONE=1
       break
     else
@@ -681,39 +658,34 @@ menu_keymap() {
 
 # Function to set keymap from loaded saved configure file
 set_keymap() {
-  # Define some variables locally
-  local KEYMAP
-  KEYMAP=$(get_option KEYMAP)
+  local KEYMAP=$(get_option KEYMAP)
 
   if [ -f /etc/vconsole.conf ]; then
-    sed -i -e "s|KEYMAP=.*|KEYMAP=$KEYMAP|g" "$TARGETDIR"/etc/vconsole.conf
+    sed -i -e "s|KEYMAP=.*|KEYMAP=$KEYMAP|g" $TARGETDIR/etc/vconsole.conf
   else
-    sed -i -e "s|#\?KEYMAP=.*|KEYMAP=$KEYMAP|g" "$TARGETDIR"/etc/rc.conf
+    sed -i -e "s|#\?KEYMAP=.*|KEYMAP=$KEYMAP|g" $TARGETDIR/etc/rc.conf
   fi
 }
 
 # Function for chose and set locale
 menu_locale() {
-  # Define some variables locally
-  local _locales LOCALES ISO639 ISO3166 TMPFILE result
-  _locales="$(grep -E '\.UTF-8' /etc/default/libc-locales|awk '{print $1}'|sed -e 's/^#//')"
-  TMPFILE=$(mktemp -t vinstall-XXXXXXXX || exit 1)
-
+  local _locales="$(grep -E '\.UTF-8' /etc/default/libc-locales|awk '{print $1}'|sed -e 's/^#//')"
+  local LOCALES ISO639 ISO3166
+  local TMPFILE=$(mktemp -t vinstall-XXXXXXXX || exit 1)
   INFOBOX "Scanning locales ..." 4 60
   for f in ${_locales}; do
-    eval "$(echo "$f" | awk 'BEGIN { FS="." } \
-            { FS="_"; split($1, a); printf "ISO639=%s ISO3166=%s\n", a[1], a[2] }')"
-    echo "$f|$(iso639_language "$ISO639") ($(iso3166_country "$ISO3166"))|" >> "$TMPFILE"
+    eval $(echo $f | awk 'BEGIN { FS="." } \
+            { FS="_"; split($1, a); printf "ISO639=%s ISO3166=%s\n", a[1], a[2] }')
+    echo "$f|$(iso639_language $ISO639) ($(iso3166_country $ISO3166))|" >> $TMPFILE
   done
   clear
   # Sort by ISO-639 language names
-  LOCALES=$(sort -t '|' -k 2 < "$TMPFILE" | xargs | sed -e's/| /|/g')
-  rm -f "$TMPFILE"
+  LOCALES=$(sort -t '|' -k 2 < $TMPFILE | xargs | sed -e's/| /|/g')
+  rm -f $TMPFILE
   while true; do
     (IFS="|"; DIALOG --title " Select your locale " --menu "$MENULABEL" 18 70 18 ${LOCALES})
-    result=$?
-    if [ "$result" -eq 0 ]; then
-      set_option LOCALE "$(cat "$ANSWER")"
+    if [ $? -eq 0 ]; then
+      set_option LOCALE "$(cat $ANSWER)"
       LOCALE_DONE=1
       break
     else
@@ -722,33 +694,29 @@ menu_locale() {
   done
 }
 
-# # Function to set locale from loaded saved configure file
+# Function to set locale from loaded saved configure file
 set_locale() {
-  # Define some variables locally
-  local LOCALE
-
-  if [ -f "$TARGETDIR"/etc/default/libc-locales ]; then
-    LOCALE="$(get_option LOCALE)"
+  if [ -f $TARGETDIR/etc/default/libc-locales ]; then
+    local LOCALE="$(get_option LOCALE)"
     : "${LOCALE:=C.UTF-8}"
-    sed -i -e "s|LANG=.*|LANG=$LOCALE|g" "$TARGETDIR"/etc/locale.conf
+    sed -i -e "s|LANG=.*|LANG=$LOCALE|g" $TARGETDIR/etc/locale.conf
     # Uncomment locale from /etc/default/libc-locales and regenerate it.
-    sed -e "/${LOCALE}/s/^\#//" -i "$TARGETDIR"/etc/default/libc-locales
-    echo "Running xbps-reconfigure -f glibc-locales ..." >>"$LOG"
-    chroot "$TARGETDIR" xbps-reconfigure -f glibc-locales >>"$LOG" 2>&1
+    sed -e "/${LOCALE}/s/^\#//" -i $TARGETDIR/etc/default/libc-locales
+    echo "Running xbps-reconfigure -f glibc-locales ..." >>$LOG
+    chroot $TARGETDIR xbps-reconfigure -f glibc-locales >>$LOG 2>&1
   fi
 }
 
 # Function to chose and set timezone
 menu_timezone() {
-  # Define some variables locally
-  local areas area locations location
-  areas=(Africa America Antarctica Arctic Asia Atlantic Australia Europe Indian Pacific)
+  local areas=(Africa America Antarctica Arctic Asia Atlantic Australia Europe Indian Pacific)
 
+  local area locations location
   while (IFS='|'; DIALOG ${area:+--default-item|"$area"} --title " Select area " --menu "$MENULABEL" 19 51 19 $(printf '%s||' "${areas[@]}")); do
-    area=$(cat "$ANSWER")
-    read -r -a locations -d '\n' < <(find /usr/share/zoneinfo/"$area" -type f -printf '%P\n' | sort)
+    area=$(cat $ANSWER)
+    read -a locations -d '\n' < <(find /usr/share/zoneinfo/$area -type f -printf '%P\n' | sort)
     if (IFS='|'; DIALOG --title " Select location (${area}) " --menu "$MENULABEL" 19 51 19 $(printf '%s||' "${locations[@]//_/ }")); then
-      location=$(tr ' ' '_' < "$ANSWER")
+      location=$(tr ' ' '_' < $ANSWER)
       set_option TIMEZONE "$area/$location"
       TIMEZONE_DONE=1
       return 0
@@ -761,23 +729,17 @@ menu_timezone() {
 
 # Function to set timezone from loaded saved configure file
 set_timezone() {
-  # Define some variables locally
-  local TIMEZONE
-  TIMEZONE="$(get_option TIMEZONE)"
+  local TIMEZONE="$(get_option TIMEZONE)"
 
   ln -sf "/usr/share/zoneinfo/${TIMEZONE}" "${TARGETDIR}/etc/localtime"
 }
 
 # Function to set hostname
 menu_hostname() {
-  # Define some variables locally
-  local result
-
   while true; do
     DIALOG --inputbox "Set the machine hostname:" ${INPUTSIZE}
-    result=$?
-    if [ "$result" -eq 0 ]; then
-      set_option HOSTNAME "$(cat "$ANSWER")"
+    if [ $? -eq 0 ]; then
+      set_option HOSTNAME "$(cat $ANSWER)"
       HOSTNAME_DONE=1
       break
     else
@@ -788,17 +750,13 @@ menu_hostname() {
 
 # Function to set hostname from loaded saved configure file
 set_hostname() {
-  # Define some variables locally
-  local hostname
-
-  hostname="$(get_option HOSTNAME)"
-  echo "${hostname:-void}" > "$TARGETDIR"/etc/hostname
+  local hostname="$(get_option HOSTNAME)"
+  echo "${hostname:-void}" > $TARGETDIR/etc/hostname
 }
 
 # Function to set password for root
 menu_rootpassword() {
-  # Define some variables locally
-  local _firstpass _secondpass _again _desc result
+  local _firstpass _secondpass _again _desc
 
   while true; do
     if [ -z "${_firstpass}" ]; then
@@ -807,14 +765,13 @@ menu_rootpassword() {
       _again=" again"
     fi
     DIALOG --insecure --passwordbox "${_desc}${_again}" ${INPUTSIZE}
-    result=$?
-    if [ "$result" -eq 0 ]; then
+    if [ $? -eq 0 ]; then
       if [ -z "${_firstpass}" ]; then
         _firstpass="$(cat $ANSWER)"
       else
         _secondpass="$(cat $ANSWER)"
       fi
-      if [ -n "${_firstpass}" ] && [ -n "${_secondpass}" ]; then
+      if [ -n "${_firstpass}" -a -n "${_secondpass}" ]; then
         if [ "${_firstpass}" != "${_secondpass}" ]; then
           INFOBOX "Passwords do not match! Please enter again." 6 60
           unset _firstpass _secondpass _again
@@ -832,23 +789,21 @@ menu_rootpassword() {
 
 # Function to set password for root from loaded saved configure file
 set_rootpassword() {
-  echo "root:$(get_option ROOTPASSWORD)" | chroot "$TARGETDIR" chpasswd -c SHA512
+  echo "root:$(get_option ROOTPASSWORD)" | chroot $TARGETDIR chpasswd -c SHA512
 }
 
 # Function to set user account
 menu_useraccount() {
-  # Define some variables locally
   local _firstpass _secondpass _desc _again
-  local _groups _status _group _gid _checklist
-  local _preset _userlogin result
+  local _groups _status _group _checklist
+  local _preset _userlogin
 
   while true; do
     _preset=$(get_option USERLOGIN)
     [ -z "$_preset" ] && _preset="brgvos"
     DIALOG --inputbox "Enter a primary login name:" ${INPUTSIZE} "$_preset"
-    result=$?
-    if [ "$result" -eq 0 ]; then
-      _userlogin="$(cat "$ANSWER")"
+    if [ $? -eq 0 ]; then
+      _userlogin="$(cat $ANSWER)"
       # based on useradd(8) § Caveats
       if [ "${#_userlogin}" -le 32 ] && [[ "${_userlogin}" =~ ^[a-z_][a-z0-9_-]*[$]?$ ]]; then
         set_option USERLOGIN "${_userlogin}"
@@ -869,9 +824,8 @@ menu_useraccount() {
     [ -z "$_preset" ] && _preset="User Name"
     DIALOG --inputbox "Enter a display name for login '$(get_option USERLOGIN)' :" \
       ${INPUTSIZE} "$_preset"
-    result=$?
-    if [ "$result" -eq 0 ]; then
-      set_option USERNAME "$(cat "$ANSWER")"
+    if [ $? -eq 0 ]; then
+      set_option USERNAME "$(cat $ANSWER)"
       USERNAME_DONE=1
       break
     else
@@ -886,14 +840,13 @@ menu_useraccount() {
       _again=" again"
     fi
     DIALOG --insecure --passwordbox "${_desc}${_again}" ${INPUTSIZE}
-    result=$?
-    if [ "$result" -eq 0 ]; then
+    if [ $? -eq 0 ]; then
       if [ -z "${_firstpass}" ]; then
-        _firstpass="$(cat "$ANSWER")"
+        _firstpass="$(cat $ANSWER)"
       else
-        _secondpass="$(cat "$ANSWER")"
+        _secondpass="$(cat $ANSWER)"
       fi
-      if [ -n "${_firstpass}" ] && [ -n "${_secondpass}" ]; then
+      if [ -n "${_firstpass}" -a -n "${_secondpass}" ]; then
         if [ "${_firstpass}" != "${_secondpass}" ]; then
           INFOBOX "Passwords do not match! Please enter again." 6 60
           unset _firstpass _secondpass _again
@@ -908,7 +861,7 @@ menu_useraccount() {
     fi
   done
 
-  _groups="wheel,audio,video,floppy,lp,dialout,cdrom,optical,storage,kvm,plugdev,users,xbuilder,bluetooth,socklog"
+  _groups="wheel,audio,video,floppy,cdrom,optical,kvm,users,xbuilder"
   while true; do
     _desc="Select group membership for login '$(get_option USERLOGIN)':"
     for _group in $(cat /etc/group); do
@@ -932,7 +885,7 @@ menu_useraccount() {
     done
     DIALOG --no-tags --checklist "${_desc}" 20 60 18 ${_checklist}
     if [ $? -eq 0 ]; then
-      set_option USERGROUPS "$(cat "$ANSWER" | sed -e's| |,|g')"
+      set_option USERGROUPS $(cat $ANSWER | sed -e's| |,|g')
       USERGROUPS_DONE=1
       break
     else
@@ -944,23 +897,19 @@ menu_useraccount() {
 # Function to set user account from loaded saved configure file
 set_useraccount() {
   [ -z "$USERACCOUNT_DONE" ] && return
-  chroot "$TARGETDIR" useradd -m -G "$(get_option USERGROUPS)" \
+  chroot $TARGETDIR useradd -m -G "$(get_option USERGROUPS)" \
     -c "$(get_option USERNAME)" "$(get_option USERLOGIN)"
   echo "$(get_option USERLOGIN):$(get_option USERPASSWORD)" | \
-    chroot "$TARGETDIR" chpasswd -c SHA512
+    chroot $TARGETDIR chpasswd -c SHA512
 }
 
-# Function to set bootloader
+# Function to choose bootloader
 menu_bootloader() {
-  # Define some variables locally
-  local result
-
   while true; do
     DIALOG --title " Select the disk to install the bootloader" \
       --menu "$MENULABEL" ${MENUSIZE} $(show_disks) none "Manage bootloader otherwise"
-    result=$?
-    if [ "$result" -eq 0 ]; then
-      set_option BOOTLOADER "$(cat "$ANSWER")"
+    if [ $? -eq 0 ]; then
+      set_option BOOTLOADER "$(cat $ANSWER)"
       BOOTLOADER_DONE=1
       break
     else
@@ -969,11 +918,10 @@ menu_bootloader() {
   done
   while true; do
     DIALOG --yesno "Use a graphical terminal for the boot loader?" ${YESNOSIZE}
-    result=$?
-    if [ "$result" -eq 0 ]; then
+    if [ $? -eq 0 ]; then
       set_option TEXTCONSOLE 0
       break
-    elif [ "$result" -eq 1 ]; then
+    elif [ $? -eq 1 ]; then
       set_option TEXTCONSOLE 1
       break
     else
@@ -982,12 +930,9 @@ menu_bootloader() {
   done
 }
 
-# Function to set boot loader from loaded saved configure file
+# Function to set bootloader from loaded saved configure file
 set_bootloader() {
-  # Define some variables locally
-  local dev grub_args CRYPT_UUID result bool
-  dev=$(get_option BOOTLOADER)
-  grub_args=
+  local dev=$(get_option BOOTLOADER) grub_args=
 
   if [ "$dev" = "none" ]; then return; fi
 
@@ -995,51 +940,49 @@ set_bootloader() {
   if [ -n "$EFI_SYSTEM" ]; then
     grub_args="--target=$EFI_TARGET --efi-directory=/boot/efi --bootloader-id=brgvos_grub --recheck"
   fi
-  echo "Running grub-install $grub_args $dev..." >>"$LOG"
+  echo "Running grub-install $grub_args $dev..." >>$LOG
   # Check if root file system was crypted and add option in grub config
   $(cryptsetup isLuks "$ROOTFS") && bool=1 || bool=0
-  echo "Check if root file system was crypted and add option in grub config" >>"$LOG"
+  echo "Check if root file system was crypted and add option in grub config" >>$LOG
   if [ "$bool" -eq 1 ]; then
-    echo "Detected crypted device on $ROOTFS"  >>"$LOG"
+    echo "Detected crypted device on $ROOTFS"  >>$LOG
     CRYPT_UUID=$(blkid -s UUID -o value "$ROOTFS")
-    chroot "$TARGETDIR" dd bs=512 count=4 if=/dev/urandom of=/boot/cryptlvm.key >>"$LOG" 2>&1
-    echo -n "$PASSPHRASE" | cryptsetup luksAddKey "$ROOTFS" "$TARGETDIR"/boot/cryptlvm.key >>"$LOG" 2>&1
-    chroot "$TARGETDIR" chmod 0600 /boot/cryptlvm.key >>"$LOG" 2>&1
-    awk 'BEGIN{print "crypt UUID='"$CRYPT_UUID"' /boot/cryptlvm.key luks"}' >> "$TARGETDIR"/etc/crypttab
-    chroot "$TARGETDIR" touch /etc/dracut.conf.d/10-crypt.conf >>"$LOG" 2>&1
-    awk 'BEGIN{print "install_items+=\" /boot/cryptlvm.key /etc/crypttab \""}' >> "$TARGETDIR"/etc/dracut.conf.d/10-crypt.conf
-    echo "Generate again initramfs because was created a key for open crypted device $ROOTFS" >>"$LOG"
-    chroot "$TARGETDIR" dracut --no-hostonly --force >>"$LOG" 2>&1
-    echo "Enable cryptodisk option in grub config" >>"$LOG"
-    chroot "$TARGETDIR" sed -i '$aGRUB_ENABLE_CRYPTODISK=y' /etc/default/grub >>"$LOG" 2>&1
+    chroot $TARGETDIR dd bs=512 count=4 if=/dev/urandom of=/boot/cryptlvm.key >>$LOG 2>&1
+    echo -n "$PASSPHRASE" | cryptsetup luksAddKey $ROOTFS $TARGETDIR/boot/cryptlvm.key >>$LOG 2>&1
+    chroot $TARGETDIR chmod 0600 /boot/cryptlvm.key >>$LOG 2>&1
+    awk 'BEGIN{print "crypt UUID='"$CRYPT_UUID"' /boot/cryptlvm.key luks"}' >> $TARGETDIR/etc/crypttab
+    chroot $TARGETDIR touch /etc/dracut.conf.d/10-crypt.conf >>$LOG 2>&1
+    awk 'BEGIN{print "install_items+=\" /boot/cryptlvm.key /etc/crypttab \""}' >> $TARGETDIR/etc/dracut.conf.d/10-crypt.conf
+    echo "Generate again initramfs because was created a key for open crypted device $ROOTFS" >>$LOG
+    chroot $TARGETDIR dracut --no-hostonly --force >>$LOG 2>&1
+    echo "Enable cryptodisk option in grub config" >>$LOG
+    chroot $TARGETDIR sed -i '$aGRUB_ENABLE_CRYPTODISK=y' /etc/default/grub >>$LOG 2>&1
   else
-    echo "Device $ROOTFS is not crypted"  >>"$LOG"
+    echo "Device $ROOTFS is not crypted"  >>$LOG
   fi
   # Install grub
-  chroot "$TARGETDIR" grub-install "$grub_args" "$dev" >>"$LOG" 2>&1
-  result=$?
-  if [ "$result" -ne 0 ]; then
+  chroot $TARGETDIR grub-install $grub_args $dev >>$LOG 2>&1
+  if [ $? -ne 0 ]; then
     DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to install GRUB to $dev!\nCheck $LOG for errors." "${MSGBOXSIZE}"
+failed to install GRUB to $dev!\nCheck $LOG for errors." ${MSGBOXSIZE}
     DIE 1
   fi
-  echo "Preparing the Logo and name in the grub menu $TARGETDIR..." >>"$LOG"
-  chroot "$TARGETDIR" sed -i 's+#GRUB_BACKGROUND=/usr/share/void-artwork/splash.png+GRUB_BACKGROUND=/usr/share/brgvos-artwork/splash.png+g' /etc/default/grub >>"$LOG" 2>&1
-  chroot "$TARGETDIR" sed -i 's/GRUB_DISTRIBUTOR="Void"/GRUB_DISTRIBUTOR="BRGV-OS"/g' /etc/default/grub >>"$LOG" 2>&1
+  echo "Preparing the Logo and name in the grub menu $TARGETDIR..." >>$LOG
+  chroot $TARGETDIR sed -i 's+#GRUB_BACKGROUND=/usr/share/void-artwork/splash.png+GRUB_BACKGROUND=/usr/share/brgvos-artwork/splash.png+g' /etc/default/grub >>$LOG 2>&1
+  chroot $TARGETDIR sed -i 's/GRUB_DISTRIBUTOR="Void"/GRUB_DISTRIBUTOR="BRGV-OS"/g' /etc/default/grub >>$LOG 2>&1
   if [ "$bool" -eq 1 ]; then
-    echo "Prepare parameters on Grub for crypted device $ROOTFS"  >>"$LOG"
-    chroot "$TARGETDIR" sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 rd.auto=1 cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash"/g' /etc/default/grub >>"$LOG" 2>&1
+    echo "Prepare parameters on Grub for crypted device $ROOTFS"  >>$LOG
+    chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 rd.auto=1 cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash"/g' /etc/default/grub >>$LOG 2>&1
   else
-    echo "Prepare parameters on Grub for device $ROOTFS"  >>"$LOG"
-    chroot "$TARGETDIR" sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 quiet splash"/g' /etc/default/grub >>"$LOG" 2>&1
+    echo "Prepare parameters on Grub for device $ROOTFS"  >>$LOG
+    chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 quiet splash"/g' /etc/default/grub >>$LOG 2>&1
   fi
-  chroot "$TARGETDIR" sed -i '$aGRUB_DISABLE_OS_PROBER=false' /etc/default/grub >>"$LOG" 2>&1
-  echo "Running grub-mkconfig on $TARGETDIR..." >>"$LOG"
-  chroot "$TARGETDIR" grub-mkconfig -o /boot/grub/grub.cfg >>"$LOG" 2>&1
-  result=$?
-  if [ "$result" -ne 0 ]; then
+  chroot $TARGETDIR sed -i '$aGRUB_DISABLE_OS_PROBER=false' /etc/default/grub >>$LOG 2>&1
+  echo "Running grub-mkconfig on $TARGETDIR..." >>$LOG
+  chroot $TARGETDIR grub-mkconfig -o /boot/grub/grub.cfg >>$LOG 2>&1
+  if [ $? -ne 0 ]; then
     DIALOG --msgbox "${BOLD}${RED}ERROR${RESET}: \
-failed to run grub-mkconfig!\nCheck $LOG for errors." "${MSGBOXSIZE}"
+failed to run grub-mkconfig!\nCheck $LOG for errors." ${MSGBOXSIZE}
     DIE 1
   fi
 }
@@ -1050,7 +993,7 @@ test_network() {
   NETWORK_DONE=
 
   rm -f otime && \
-    xbps-uhelper fetch https://repo-default.voidlinux.org/current/otime >>"$LOG" 2>&1
+    xbps-uhelper fetch https://repo-default.voidlinux.org/current/otime >>$LOG 2>&1
   local status=$?
   rm -f otime
 
@@ -1060,8 +1003,7 @@ test_network() {
     return 1
   fi
   if [ "$1" = "nm" ]; then
-    DIALOG --msgbox "Network Manager is enabled but network is inaccessible, please set it up externally
-     with nmcli, nmtui, or the Network Manager tray applet." ${MSGBOXSIZE}
+    DIALOG --msgbox "Network Manager is enabled but network is inaccessible, please set it up externally with nmcli, nmtui, or the Network Manager tray applet." ${MSGBOXSIZE}
   else
     DIALOG --msgbox "Network is inaccessible, please set it up properly." ${MSGBOXSIZE}
   fi
@@ -1069,22 +1011,19 @@ test_network() {
 
 # Function to configure Wi-Fi network
 configure_wifi() {
-  # Define some variables locally
-  local dev ssid enc pass _wpasupconf values
-  dev="$1"
-  _wpasupconf=/etc/wpa_supplicant/wpa_supplicant.conf
+  local dev="$1" ssid enc pass _wpasupconf=/etc/wpa_supplicant/wpa_supplicant.conf
 
   DIALOG --form "Wireless configuration for ${dev}\n(encryption type: wep or wpa)" 0 0 0 \
     "SSID:" 1 1 "" 1 16 30 0 \
     "Encryption:" 2 1 "" 2 16 4 3 \
     "Password:" 3 1 "" 3 16 63 0 || return 1
-  readarray -t values <<<"$(cat "$ANSWER")"
+  readarray -t values <<<$(cat $ANSWER)
   ssid="${values[0]}"; enc="${values[1]}"; pass="${values[2]}"
 
   if [ -z "$ssid" ]; then
     DIALOG --msgbox "Invalid SSID." ${MSGBOXSIZE}
     return 1
-  elif [ -z "$enc" ] || [ "$enc" != "wep" ] && [ "$enc" != "wpa" ]; then
+  elif [ -z "$enc" -o "$enc" != "wep" -a "$enc" != "wpa" ]; then
     DIALOG --msgbox "Invalid encryption type (possible values: wep or wpa)." ${MSGBOXSIZE}
     return 1
   elif [ -z "$pass" ]; then
@@ -1093,13 +1032,13 @@ configure_wifi() {
 
   # reset the configuration to the default, if necessary
   # otherwise backup the configuration
-  if [ -f "${_wpasupconf}".orig ]; then
-    cp -f "${_wpasupconf}".orig "${_wpasupconf}"
+  if [ -f ${_wpasupconf}.orig ]; then
+    cp -f ${_wpasupconf}.orig ${_wpasupconf}
   else
-    cp -f "${_wpasupconf}" "${_wpasupconf}".orig
+    cp -f ${_wpasupconf} ${_wpasupconf}.orig
   fi
   if [ "$enc" = "wep" ]; then
-    cat << EOF >> "${_wpasupconf}"
+    cat << EOF >> ${_wpasupconf}
 network={
   ssid="$ssid"
   wep_key0="$pass"
@@ -1108,44 +1047,40 @@ network={
 }
 EOF
   else
-    wpa_passphrase "$ssid" "$pass" >> "${_wpasupconf}"
+    wpa_passphrase "$ssid" "$pass" >> ${_wpasupconf}
   fi
 
   sv restart wpa_supplicant
-  configure_net_dhcp "$dev"
+  configure_net_dhcp $dev
   return $?
 }
 
 # Function to configure network
 configure_net() {
-  # Define some variables locally
-  local dev rval
-  dev="$1"
+  local dev="$1" rval
 
   DIALOG --yesno "Do you want to use DHCP for $dev?" ${YESNOSIZE}
   rval=$?
-  if [ "$rval" -eq 0 ]; then
-    configure_net_dhcp "$dev"
-  elif [ "$rval" -eq 1 ]; then
-    configure_net_static "$dev"
+  if [ $rval -eq 0 ]; then
+    configure_net_dhcp $dev
+  elif [ $rval -eq 1 ]; then
+    configure_net_static $dev
   fi
 }
 
 # Function return interface setup
 iface_setup() {
-  ip addr show dev "$1" | grep -q -e 'inet ' -e 'inet6 '
+  ip addr show dev $1 | grep -q -e 'inet ' -e 'inet6 '
   return $?
 }
 
 # Function configure interface for dhcpcd service
 configure_net_dhcp() {
-  # Define some variables locally
-  local dev
-  dev="$1"
+  local dev="$1"
 
-  iface_setup "$dev"
+  iface_setup $dev
   if [ $? -eq 1 ]; then
-    sv restart dhcpcd 2>&1 | tee "$LOG" | \
+    sv restart dhcpcd 2>&1 | tee $LOG | \
       DIALOG --progressbox "Initializing $dev via DHCP..." ${WIDGET_SIZE}
     if [ $? -ne 0 ]; then
       DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} failed to run dhcpcd. See $LOG for details." ${MSGBOXSIZE}
@@ -1166,7 +1101,6 @@ configure_net_dhcp() {
 
 # Function configure interface network static
 configure_net_static() {
-  # Define some variables locally
   local ip gw dns1 dns2 dev=$1
 
   DIALOG --form "Static IP configuration for $dev:" 0 0 0 \
@@ -1175,21 +1109,21 @@ configure_net_static() {
     "DNS Primary" 3 1 "8.8.8.8" 3 21 20 0 \
     "DNS Secondary" 4 1 "8.8.4.4" 4 21 20 0 || return 1
 
-  set -- "$(cat "$ANSWER")"
+  set -- $(cat $ANSWER)
   ip=$1; gw=$2; dns1=$3; dns2=$4
-  echo "running: ip link set dev $dev up" >>"$LOG"
-  ip link set dev "$dev" up >>"$LOG" 2>&1
+  echo "running: ip link set dev $dev up" >>$LOG
+  ip link set dev $dev up >>$LOG 2>&1
   if [ $? -ne 0 ]; then
     DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} Failed to bring $dev interface." ${MSGBOXSIZE}
     return 1
   fi
-  echo "running: ip addr add $ip dev $dev" >>"$LOG"
-  ip addr add "$ip" dev "$dev" >>"$LOG" 2>&1
+  echo "running: ip addr add $ip dev $dev" >>$LOG
+  ip addr add $ip dev $dev >>$LOG 2>&1
   if [ $? -ne 0 ]; then
     DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} Failed to set ip to the $dev interface." ${MSGBOXSIZE}
     return 1
   fi
-  ip route add default via "$gw" >>"$LOG" 2>&1
+  ip route add default via $gw >>$LOG 2>&1
   if [ $? -ne 0 ]; then
     DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} failed to setup your gateway." ${MSGBOXSIZE}
     return 1
@@ -1204,8 +1138,7 @@ configure_net_static() {
 
 # Function for menu network to configure interface network
 menu_network() {
-  # Define some variables locally
-  local dev addr f DEVICES status
+  local dev addr f DEVICES
 
   if [ -e /var/service/NetworkManager ]; then
     test_network nm
@@ -1214,30 +1147,27 @@ menu_network() {
 
   for f in $(ls /sys/class/net); do
     [ "$f" = "lo" ] && continue
-    addr=$(cat /sys/class/net/"$f"/address)
+    addr=$(cat /sys/class/net/$f/address)
     DEVICES="$DEVICES $f $addr"
   done
   DIALOG --title " Select the network interface to configure " \
-    --menu "$MENULABEL" "${MENUSIZE}" ${DEVICES}
-  status=$?
-  if [ "$status" -eq 0 ]; then
-    dev=$(cat "$ANSWER")
+    --menu "$MENULABEL" ${MENUSIZE} ${DEVICES}
+  if [ $? -eq 0 ]; then
+    dev=$(cat $ANSWER)
     if $(echo $dev|egrep -q "^wl.*" 2>/dev/null); then
-      configure_wifi "$dev"
+      configure_wifi $dev
     else
-      configure_net "$dev"
+      configure_net $dev
     fi
   fi
 }
 
 # Function to validate user account
 validate_useraccount() {
-  # Define some variables locally
-  local USERLOGIN USERPASSWORD USERGROUPS
   # don't check that USERNAME has been set because it can be empty
-  USERLOGIN=$(get_option USERLOGIN)
-  USERPASSWORD=$(get_option USERPASSWORD)
-  USERGROUPS=$(get_option USERGROUPS)
+  local USERLOGIN=$(get_option USERLOGIN)
+  local USERPASSWORD=$(get_option USERPASSWORD)
+  local USERGROUPS=$(get_option USERGROUPS)
 
   if [ -n "$USERLOGIN" ] && [ -n "$USERPASSWORD" ] && [ -n "$USERGROUPS" ]; then
     USERACCOUNT_DONE=1
@@ -1246,14 +1176,13 @@ validate_useraccount() {
 
 # Function to validate user account
 validate_filesystems() {
-  # Define some variables locally
-  local mnts dev size fstype mntpt mkfs rootfound fmt usrfound efi_system_partition bootdev
-  bootdev=$(get_option BOOTLOADER)
+  local mnts dev size fstype mntpt mkfs rootfound fmt
+  local usrfound efi_system_partition
+  local bootdev=$(get_option BOOTLOADER)
 
   unset TARGETFS
-  local TARGETFS
-  mnts=$(grep -E '^MOUNTPOINT .*' "$CONF_FILE")
-  set -- "${mnts}"
+  mnts=$(grep -E '^MOUNTPOINT .*' $CONF_FILE)
+  set -- ${mnts}
   while [ $# -ne 0 ]; do
     fmt=""
     dev=$2; fstype=$3; size=$4; mntpt="$5"; mkfs=$6
@@ -1263,7 +1192,7 @@ validate_filesystems() {
       rootfound=1
     elif [ "$mntpt" = "/usr" ]; then
       usrfound=1
-    elif [ "$fstype" = "vfat" ] && [ "$mntpt" = "/boot/efi" ]; then
+    elif [ "$fstype" = "vfat" -a "$mntpt" = "/boot/efi" ]; then
       efi_system_partition=1
     fi
     if [ "$mkfs" -eq 1 ]; then
@@ -1277,16 +1206,16 @@ validate_filesystems() {
   done
   if [ -z "$rootfound" ]; then
     DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-the mount point for the root filesystem (/) has not yet been configured." "${MSGBOXSIZE}"
+the mount point for the root filesystem (/) has not yet been configured." ${MSGBOXSIZE}
     return 1
   elif [ -n "$usrfound" ]; then
     DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-/usr mount point has been configured but is not supported, please remove it to continue." "${MSGBOXSIZE}"
+/usr mount point has been configured but is not supported, please remove it to continue." ${MSGBOXSIZE}
     return 1
-  elif [ -n "$EFI_SYSTEM" ] && [ "$bootdev" != "none" ] && [ -z "$efi_system_partition" ]; then
+  elif [ -n "$EFI_SYSTEM" -a "$bootdev" != "none" -a -z "$efi_system_partition" ]; then
     DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
 The EFI System Partition has not yet been configured, please create it\n
-as FAT32, mountpoint /boot/efi and at least with 100MB of size." "${MSGBOXSIZE}"
+as FAT32, mountpoint /boot/efi and at least with 100MB of size." ${MSGBOXSIZE}
     return 1
   fi
   FILESYSTEMS_DONE=1
@@ -1294,282 +1223,266 @@ as FAT32, mountpoint /boot/efi and at least with 100MB of size." "${MSGBOXSIZE}"
 
 # Function to create filesystems
 create_filesystems() {
-  # Define some variables locally
-  local mnts dev mntpt fstype fspassno mkfs rv uuid MKFS mem_total swap_need disk_name disk_type ROOT_UUID SWAP_UUID
+  local mnts dev mntpt fstype fspassno mkfs size rv uuid
 
-  mnts=$(grep -E '^MOUNTPOINT .*' "$CONF_FILE" | sort -k 5)
-  set -- "${mnts}"
+  mnts=$(grep -E '^MOUNTPOINT .*' $CONF_FILE | sort -k 5)
+  set -- ${mnts}
   while [ $# -ne 0 ]; do
     dev=$2; fstype=$3; mntpt="$5"; mkfs=$6
     shift 6
 
     # swap partitions
     if [ "$fstype" = "swap" ]; then
-      swapoff "$dev" >/dev/null 2>&1
+      swapoff $dev >/dev/null 2>&1
       if [ "$mkfs" -eq 1 ]; then
-        mkswap "$dev" >>"$LOG" 2>&1
+        mkswap $dev >>$LOG 2>&1
         if [ $? -ne 0 ]; then
           DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to create swap on ${dev}!\ncheck $LOG for errors." "${MSGBOXSIZE}"
+failed to create swap on ${dev}!\ncheck $LOG for errors." ${MSGBOXSIZE}
           DIE 1
         fi
       fi
-      swapon "$dev" >>"$LOG" 2>&1
+      swapon $dev >>$LOG 2>&1
       if [ $? -ne 0 ]; then
         DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to activate swap on $dev!\ncheck $LOG for errors." "${MSGBOXSIZE}"
+failed to activate swap on $dev!\ncheck $LOG for errors." ${MSGBOXSIZE}
         DIE 1
       fi
       # Add entry for target fstab
       uuid=$(blkid -o value -s UUID "$dev")
-      echo "UUID=$uuid none swap defaults 0 0" >>"$TARGET_FSTAB"
+      echo "UUID=$uuid none swap defaults 0 0" >>$TARGET_FSTAB
       continue
     fi
 
     if [ "$mkfs" -eq 1 ]; then
       case "$fstype" in
-      btrfs) MKFS="mkfs.btrfs -f"; modprobe btrfs >>"$LOG" 2>&1;;
-      btrfs_lvm) MKFS="mkfs.btrfs -f"; modprobe btrfs >>"$LOG" 2>&1;;
-      btrfs_lvm_crypt) MKFS="mkfs.btrfs -f"; modprobe btrfs >>"$LOG" 2>&1;;
-      ext2) MKFS="mke2fs -F"; modprobe ext2 >>"$LOG" 2>&1;;
-      ext3) MKFS="mke2fs -F -j"; modprobe ext3 >>"$LOG" 2>&1;;
-      ext4) MKFS="mke2fs -F -t ext4"; modprobe ext4 >>"$LOG" 2>&1;;
-      f2fs) MKFS="mkfs.f2fs -f"; modprobe f2fs >>"$LOG" 2>&1;;
-      vfat) MKFS="mkfs.vfat -F32"; modprobe vfat >>"$LOG" 2>&1;;
-      xfs) MKFS="mkfs.xfs -f -i sparse=0"; modprobe xfs >>"$LOG" 2>&1;;
+      btrfs) MKFS="mkfs.btrfs -f"; modprobe btrfs >>$LOG 2>&1;;
+      btrfs_lvm) MKFS="mkfs.btrfs -f"; modprobe btrfs >>$LOG 2>&1;;
+      btrfs_lvm_crypt) MKFS="mkfs.btrfs -f"; modprobe btrfs >>$LOG 2>&1;;
+      ext2) MKFS="mke2fs -F"; modprobe ext2 >>$LOG 2>&1;;
+      ext3) MKFS="mke2fs -F -j"; modprobe ext3 >>$LOG 2>&1;;
+      ext4) MKFS="mke2fs -F -t ext4"; modprobe ext4 >>$LOG 2>&1;;
+      f2fs) MKFS="mkfs.f2fs -f"; modprobe f2fs >>$LOG 2>&1;;
+      vfat) MKFS="mkfs.vfat -F32"; modprobe vfat >>$LOG 2>&1;;
+      xfs) MKFS="mkfs.xfs -f -i sparse=0"; modprobe xfs >>$LOG 2>&1;;
       esac
       # Calculate total memory in GB
       mem_total=$(free -t -g | grep -oP '\d+' | sed '10!d')
-      # Calculate swap need, usually 2*RAM
-      swap_need=$(($mem_total*2))
-      swap_need+="G"
+      # Calculate swap need, usaly 2*RAM
+      sawp_need=$(($mem_total*2))
+      sawp_need+="G"
       # Prepare LVM
       if [ "$fstype" = "btrfs_lvm" ]; then
-        {
-          pvcreate "$dev"
-          vgcreate vg0 "$dev"
-          lvcreate --yes --name swap -L "$swap_need" vg0
-          lvcreate --yes --name brgvos -l +100%FREE vg0
-        } >>"$LOG" 2>&1
+        pvcreate $dev >>$LOG 2>&1
+        vgcreate vg0 $dev >>$LOG 2>&1
+        lvcreate --yes --name swap -L $sawp_need vg0 >>$LOG 2>&1
+        lvcreate --yes --name brgvos -l +100%FREE vg0 >>$LOG 2>&1
         TITLE="Check $LOG for details ..."
         INFOBOX "Creating filesystem btrfs on /dev/mapper/vg0-brgvos..." 8 80
-        echo "Running $MKFS -L brgvos /dev/mapper/vg0-brgvos..." >>"$LOG"
-        $MKFS -L brgvos /dev/mapper/vg0-brgvos >>"$LOG" 2>&1; rv=$?
-        if [ "$rv" -ne 0 ]; then
+        echo "Running $MKFS -L brgvos /dev/mapper/vg0-brgvos..." >>$LOG
+        $MKFS -L brgvos /dev/mapper/vg0-brgvos >>$LOG 2>&1; rv=$?
+        if [ $rv -ne 0 ]; then
           DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to create filesystem $fstype on $dev!\ncheck $LOG for errors." "${MSGBOXSIZE}"
+failed to create filesystem $fstype on $dev!\ncheck $LOG for errors." ${MSGBOXSIZE}
           DIE 1
         fi
         TITLE="Check $LOG for details ..."
         INFOBOX "Creating filesystem swap on /dev/mapper/vg0-swap..." 8 80
-        echo "Running $MKFS -L brgvos /dev/mapper/vg0-swap..." >>"$LOG"
-        mkswap /dev/mapper/vg0-swap >>"$LOG" 2>&1; rv=$?
-        if [ "$rv" -ne 0 ]; then
+        echo "Running $MKFS -L brgvos /dev/mapper/vg0-swap..." >>$LOG
+        mkswap /dev/mapper/vg0-swap >>$LOG 2>&1; rv=$?
+        if [ $rv -ne 0 ]; then
           DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to create filesystem swap on /dev/mapper/vg0-swap!\ncheck $LOG for errors." "${MSGBOXSIZE}"
+failed to create filesystem swap on /dev/mapper/vg0-swap!\ncheck $LOG for errors." ${MSGBOXSIZE}
           DIE 1
         fi
         # Prepare LVM with Crypt
       elif [ "$fstype" = "btrfs_lvm_crypt" ]; then
         PASSPHRASE=$(get_option USERPASSWORD)
-        {
-          echo -n "$PASSPHRASE" | cryptsetup luksFormat --type=luks1 "$dev"
-          echo -n "$PASSPHRASE" | cryptsetup luksOpen "$dev" crypt -d -
-          pvcreate /dev/mapper/crypt
-          vgcreate vg0 /dev/mapper/crypt
-          lvcreate --yes --name swap -L "$swap_need" vg0
-          lvcreate --yes --name brgvos -l +100%FREE vg0
-        } >>"$LOG" 2>&1
+        echo -n "$PASSPHRASE" | cryptsetup luksFormat --type=luks1 $dev >>$LOG 2>&1
+        echo -n "$PASSPHRASE" | cryptsetup luksOpen $dev crypt -d - >>$LOG 2>&1
+        pvcreate /dev/mapper/crypt >>$LOG 2>&1
+        vgcreate vg0 /dev/mapper/crypt >>$LOG 2>&1
+        lvcreate --yes --name swap -L $sawp_need vg0 >>$LOG 2>&1
+        lvcreate --yes --name brgvos -l +100%FREE vg0 >>$LOG 2>&1
         TITLE="Check $LOG for details .."
         INFOBOX "Creating filesystem btrfs în /dev/mapper/vg0-brgvos..." 8 80
-        echo "Running $MKFS -L brgvos /dev/mapper/vg0-brgvos..." >>"$LOG"
-        $MKFS -L brgvos /dev/mapper/vg0-brgvos >>"$LOG" 2>&1; rv=$?
-        if [ "$rv" -ne 0 ]; then
+        echo "Running $MKFS -L brgvos /dev/mapper/vg0-brgvos..." >>$LOG
+        $MKFS -L brgvos /dev/mapper/vg0-brgvos >>$LOG 2>&1; rv=$?
+        if [ $rv -ne 0 ]; then
           DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to create filesystem btrfs on /dev/mapper/vg0-brgvos!\nCheck $LOG for errors." "${MSGBOXSIZE}"
+failed to create filesystem btrfs on /dev/mapper/vg0-brgvos!\nCheck $LOG for errors." ${MSGBOXSIZE}
           DIE 1
         fi
         TITLE="Check $LOG for details ..."
         INFOBOX "Creating filesystem swap în /dev/mapper/vg0-swap..." 8 80
-        echo "Running $MKFS -L brgvos /dev/mapper/vg0-swap..." >>"$LOG"
-        mkswap /dev/mapper/vg0-swap >>"$LOG" 2>&1; rv=$?
-        if [ "$rv" -ne 0 ]; then
+        echo "Running $MKFS -L brgvos /dev/mapper/vg0-swap..." >>$LOG
+        mkswap /dev/mapper/vg0-swap >>$LOG 2>&1; rv=$?
+        if [ $rv -ne 0 ]; then
           DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to create filesystem swap on /dev/mapper/vg0-swap!\nCheck $LOG for errors." "${MSGBOXSIZE}"
+failed to create filesystem swap on /dev/mapper/vg0-swap!\nCheck $LOG for errors." ${MSGBOXSIZE}
           DIE 1
         fi
       else
         TITLE="Check $LOG for details ..."
         INFOBOX "Creating filesystem $fstype on $dev for $mntpt ..." 8 80
-        echo "Running $MKFS $dev..." >>"$LOG"
-        $MKFS "$dev" >>"$LOG" 2>&1; rv=$?
-        if [ "$rv" -ne 0 ]; then
+        echo "Running $MKFS $dev..." >>$LOG
+        $MKFS $dev >>$LOG 2>&1; rv=$?
+        if [ $rv -ne 0 ]; then
           DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to create filesystem $fstype on $dev!\nCheck $LOG for errors." "${MSGBOXSIZE}"
+failed to create filesystem $fstype on $dev!\nCheck $LOG for errors." ${MSGBOXSIZE}
           DIE 1
         fi
       fi
     fi
     # Mount rootfs the first one.
     [ "$mntpt" != "/" ] && continue
-    mkdir -p "$TARGETDIR"
+    mkdir -p $TARGETDIR
     if [ "$fstype" = "btrfs_lvm" ] || [ "$fstype" = "btrfs_lvm_crypt" ]; then
-      echo "Mounting /dev/mapper/vg0-brgvos on $mntpt (btrfs)..." >>"$LOG"
-      mount /dev/mapper/vg0-brgvos "$TARGETDIR" >>"$LOG" 2>&1
+      echo "Monting /dev/mapper/vg0-brgvos on $mntpt (btrfs)..." >>$LOG
+      mount /dev/mapper/vg0-brgvos $TARGETDIR >>$LOG 2>&1
       ROOTFS=$dev
     else
-      echo "Mounting $dev on $mntpt ($fstype)..." >>"$LOG"
-      mount -t "$fstype" "$dev" "$TARGETDIR" >>"$LOG" 2>&1
+      echo "Mounting $dev on $mntpt ($fstype)..." >>$LOG
+      mount -t $fstype $dev $TARGETDIR >>$LOG 2>&1
       ROOTFS=$dev
       if [ $? -ne 0 ]; then
         DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to mount $dev on ${mntpt}! check $LOG for errors." "${MSGBOXSIZE}"
+failed to mount $dev on ${mntpt}! check $LOG for errors." ${MSGBOXSIZE}
         DIE 1
       fi
     fi
     # Check if was mounted HDD or SSD
     disk_name=$(lsblk -ndo pkname "$dev")
-    disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
+    disk_type=$(cat /sys/block/$disk_name/queue/rotational)
     # Prepare options for mount command for HDD or SSD
     if [ "$disk_type" -eq 1 ]; then
       # options for HDD
       options="compress=zstd,noatime,space_cache=v2"
-      echo "Options used for mount and fstab $options" >>"$LOG"
+      echo "Options used for mount and fstab $options" >>$LOG
     else
       # options for SSD
       options="compress=zstd,noatime,space_cache=v2,discard=async,ssd"
-      echo "Options used for mount and fstab $options" >>"$LOG"
+      echo "Options used for mount and fstab $options" >>$LOG
     fi
     # Create subvolume @, @home, @var_log, @var_lib and @snapshots
     if [ "$fstype" = "btrfs" ]; then
-      {
-        btrfs subvolume create "$TARGETDIR"/@
-        btrfs subvolume create "$TARGETDIR"/@home
-        btrfs subvolume create "$TARGETDIR"/@var_log
-        btrfs subvolume create "$TARGETDIR"/@var_lib
-        btrfs subvolume create "$TARGETDIR"/@snapshots
-        umount "$TARGETDIR"
-        mount -t "$fstype" -o "$options",subvol=@ "$dev" "$TARGETDIR"
-        mkdir -p "$TARGETDIR"/{home,var/log,var/lib,.snapshots}
-        mount -t "$fstype" -o "$options",subvol=@home "$dev" "$TARGETDIR"/home
-        mount -t "$fstype" -o "$options",subvol=@snapshots "$dev" "$TARGETDIR"/.snapshots
-        mount -t "$fstype" -o "$options",subvol=@var_log "$dev" "$TARGETDIR"/var/log
-        mount -t "$fstype" -o "$options",subvol=@var_lib "$dev" "$TARGETDIR"/var/lib
-      } >>"$LOG" 2>&1
+      btrfs subvolume create $TARGETDIR/@ >>$LOG 2>&1
+      btrfs subvolume create $TARGETDIR/@home >>$LOG 2>&1
+      btrfs subvolume create $TARGETDIR/@var_log >>$LOG 2>&1
+      btrfs subvolume create $TARGETDIR/@var_lib >>$LOG 2>&1
+      btrfs subvolume create $TARGETDIR/@snapshots >>$LOG 2>&1
+      umount $TARGETDIR >>$LOG 2>&1
+      mount -t $fstype -o $options,subvol=@ $dev $TARGETDIR >>$LOG 2>&1
+      mkdir -p $TARGETDIR/{home,var/log,var/lib,.snapshots} >>$LOG 2>&1
+      mount -t $fstype -o $options,subvol=@home $dev $TARGETDIR/home >>$LOG 2>&1
+      mount -t $fstype -o $options,subvol=@snapshots $dev $TARGETDIR/.snapshots >>$LOG 2>&1
+      mount -t $fstype -o $options,subvol=@var_log $dev $TARGETDIR/var/log >>$LOG 2>&1
+      mount -t $fstype -o $options,subvol=@var_lib $dev $TARGETDIR/var/lib >>$LOG 2>&1
     elif [ "$fstype" = "btrfs_lvm" ] || [ "$fstype" = "btrfs_lvm_crypt" ]; then
-      {
-        btrfs subvolume create "$TARGETDIR"/@
-        btrfs subvolume create "$TARGETDIR"/@home
-        btrfs subvolume create "$TARGETDIR"/@var_log
-        btrfs subvolume create "$TARGETDIR"/@var_lib
-        btrfs subvolume create "$TARGETDIR"/@snapshots
-        umount "$TARGETDIR"
-        mount -t btrfs -o "$options",subvol=@ /dev/mapper/vg0-brgvos "$TARGETDIR"
-        mkdir -p "$TARGETDIR"/{home,var/log,var/lib,.snapshots}
-        mount -t btrfs -o "$options",subvol=@home /dev/mapper/vg0-brgvos "$TARGETDIR"/home
-        mount -t btrfs -o "$options",subvol=@snapshots /dev/mapper/vg0-brgvos "$TARGETDIR"/.snapshots
-        mount -t btrfs -o "$options",subvol=@var_log /dev/mapper/vg0-brgvos "$TARGETDIR"/var/log
-        mount -t btrfs -o "$options",subvol=@var_lib /dev/mapper/vg0-brgvos "$TARGETDIR"/var/lib
-      } >>"$LOG" 2>&1
+      btrfs subvolume create $TARGETDIR/@ >>$LOG 2>&1
+      btrfs subvolume create $TARGETDIR/@home >>$LOG 2>&1
+      btrfs subvolume create $TARGETDIR/@var_log >>$LOG 2>&1
+      btrfs subvolume create $TARGETDIR/@var_lib >>$LOG 2>&1
+      btrfs subvolume create $TARGETDIR/@snapshots >>$LOG 2>&1
+      umount $TARGETDIR >>$LOG 2>&1
+      mount -t btrfs -o $options,subvol=@ /dev/mapper/vg0-brgvos $TARGETDIR >>$LOG 2>&1
+      mkdir -p $TARGETDIR/{home,var/log,var/lib,.snapshots} >>$LOG 2>&1
+      mount -t btrfs -o $options,subvol=@home /dev/mapper/vg0-brgvos $TARGETDIR/home >>$LOG 2>&1
+      mount -t btrfs -o $options,subvol=@snapshots /dev/mapper/vg0-brgvos $TARGETDIR/.snapshots >>$LOG 2>&1
+      mount -t btrfs -o $options,subvol=@var_log /dev/mapper/vg0-brgvos $TARGETDIR/var/log >>$LOG 2>&1
+      mount -t btrfs -o $options,subvol=@var_lib /dev/mapper/vg0-brgvos $TARGETDIR/var/lib >>$LOG 2>&1
     fi
     # Add entry to target fstab
     uuid=$(blkid -o value -s UUID "$dev")
-    if [ "$fstype" = "f2fs" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "btrfs_lvm" ] \
-      || [ "$fstype" = "btrfs_lvm_crypt" ] || [ "$fstype" = "xfs" ]; then
+    if [ "$fstype" = "f2fs" -o "$fstype" = "btrfs" -o "$fstype" = "btrfs_lvm" -o "$fstype" = "btrfs_lvm_crypt" -o "$fstype" = "xfs" ]; then
       fspassno=0
     else
       fspassno=1
     fi
     if [ "$fstype" = "btrfs" ]; then
-      {
-        echo "UUID=$uuid / $fstype $options,subvol=@ 0 $fspassno"
-        echo "UUID=$uuid /home $fstype $options,subvol=@home 0 $fspassno"
-        echo "UUID=$uuid /.snapshots $fstype $options,subvol=@snapshots 0 $fspassno"
-        echo "UUID=$uuid /var/log $fstype $options,subvol=@var_log 0 $fspassno"
-        echo "UUID=$uuid /var/lib $fstype $options,subvol=@var_lib 0 $fspassno"
-      } >>"$TARGET_FSTAB"
+      echo "UUID=$uuid / $fstype $options,subvol=@ 0 $fspassno" >>$TARGET_FSTAB
+      echo "UUID=$uuid /home $fstype $options,subvol=@home 0 $fspassno" >>$TARGET_FSTAB
+      echo "UUID=$uuid /.snapshots $fstype $options,subvol=@snapshots 0 $fspassno" >>$TARGET_FSTAB
+      echo "UUID=$uuid /var/log $fstype $options,subvol=@var_log 0 $fspassno" >>$TARGET_FSTAB
+      echo "UUID=$uuid /var/lib $fstype $options,subvol=@var_lib 0 $fspassno" >>$TARGET_FSTAB
     elif [ "$fstype" = "btrfs_lvm" ] || [ "$fstype" = "btrfs_lvm_crypt" ]; then
       ROOT_UUID=$(blkid -s UUID -o value /dev/mapper/vg0-brgvos)
       SWAP_UUID=$(blkid -s UUID -o value /dev/mapper/vg0-swap)
-      {
-        echo "UUID=$ROOT_UUID / btrfs $options,subvol=@ 0 $fspassno"
-        echo "UUID=$ROOT_UUID /home btrfs $options,subvol=@home 0 $fspassno"
-        echo "UUID=$ROOT_UUID /.snapshots btrfs $options,subvol=@snapshots 0 $fspassno"
-        echo "UUID=$ROOT_UUID /var/log btrfs $options,subvol=@var_log 0 $fspassno"
-        echo "UUID=$ROOT_UUID /var/lib btrfs $options,subvol=@var_lib 0 $fspassno"
-        echo "UUID=$SWAP_UUID none swap defaults 0 $fspassno"
-      } >>"$TARGET_FSTAB"
+
+      echo "UUID=$ROOT_UUID / btrfs $options,subvol=@ 0 $fspassno" >>$TARGET_FSTAB
+      echo "UUID=$ROOT_UUID /home btrfs $options,subvol=@home 0 $fspassno" >>$TARGET_FSTAB
+      echo "UUID=$ROOT_UUID /.snapshots btrfs $options,subvol=@snapshots 0 $fspassno" >>$TARGET_FSTAB
+      echo "UUID=$ROOT_UUID /var/log btrfs $options,subvol=@var_log 0 $fspassno" >>$TARGET_FSTAB
+      echo "UUID=$ROOT_UUID /var/lib btrfs $options,subvol=@var_lib 0 $fspassno" >>$TARGET_FSTAB
+      echo "UUID=$SWAP_UUID none swap defaults 0 $fspassno" >>$TARGET_FSTAB
     else
-      echo "UUID=$uuid $mntpt $fstype defaults 0 $fspassno" >>"$TARGET_FSTAB"
+      echo "UUID=$uuid $mntpt $fstype defaults 0 $fspassno" >>$TARGET_FSTAB
     fi
   done
 
   # mount all filesystems in target rootfs
-  mnts=$(grep -E '^MOUNTPOINT .*' "$CONF_FILE" | sort -k 5)
-  set -- "${mnts}"
+  mnts=$(grep -E '^MOUNTPOINT .*' $CONF_FILE | sort -k 5)
+  set -- ${mnts}
   while [ $# -ne 0 ]; do
     dev=$2; fstype=$3; mntpt="$5"
     shift 6
-    [ "$mntpt" = "/" ] || [ "$fstype" = "swap" ] && continue
-    mkdir -p "${TARGETDIR}""${mntpt}"
-    echo "Mounting $dev on $mntpt ($fstype)..." >>"$LOG"
-    mount -t "$fstype" "$dev" "${TARGETDIR}""${mntpt}" >>"$LOG" 2>&1
+    [ "$mntpt" = "/" -o "$fstype" = "swap" ] && continue
+    mkdir -p ${TARGETDIR}${mntpt}
+    echo "Mounting $dev on $mntpt ($fstype)..." >>$LOG
+    mount -t $fstype $dev ${TARGETDIR}${mntpt} >>$LOG 2>&1
     if [ $? -ne 0 ]; then
       DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to mount $dev on $mntpt! check $LOG for errors." "${MSGBOXSIZE}"
+failed to mount $dev on $mntpt! check $LOG for errors." ${MSGBOXSIZE}
       DIE
     fi
     # Add entry to target fstab
     uuid=$(blkid -o value -s UUID "$dev")
-    if [ "$fstype" = "f2fs" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "xfs" ]; then
+    if [ "$fstype" = "f2fs" -o "$fstype" = "btrfs" -o "$fstype" = "xfs" ]; then
       fspassno=0
     else
       fspassno=2
     fi
-    echo "UUID=$uuid $mntpt $fstype defaults 0 $fspassno" >>"$TARGET_FSTAB"
+    echo "UUID=$uuid $mntpt $fstype defaults 0 $fspassno" >>$TARGET_FSTAB
   done
 }
 
 # Function to mount filesystems
 mount_filesystems() {
   for f in sys proc dev; do
-    [ ! -d "$TARGETDIR"/"$f" ] && mkdir "$TARGETDIR"/"$f"
-    echo "Mounting $TARGETDIR/$f..." >>"$LOG"
-    mount --rbind /"$f" "$TARGETDIR"/"$f" >>"$LOG" 2>&1
+    [ ! -d $TARGETDIR/$f ] && mkdir $TARGETDIR/$f
+    echo "Mounting $TARGETDIR/$f..." >>$LOG
+    mount --rbind /$f $TARGETDIR/$f >>$LOG 2>&1
   done
 }
 
 # Function to umount filesystems
 umount_filesystems() {
-  local mnts dev fstype
-  mnts="$(grep -E '^MOUNTPOINT .* swap .*$' "$CONF_FILE" | sort -r -k 5)"
+  local mnts="$(grep -E '^MOUNTPOINT .* swap .*$' $CONF_FILE | sort -r -k 5)"
   set -- ${mnts}
   while [ $# -ne 0 ]; do
-    dev=$2; fstype=$3
+    local dev=$2; local fstype=$3
     shift 6
     if [ "$fstype" = "swap" ]; then
-      echo "Disabling swap space on $dev..." >>"$LOG"
-      swapoff "$dev" >>"$LOG" 2>&1
+      echo "Disabling swap space on $dev..." >>$LOG
+      swapoff $dev >>$LOG 2>&1
       continue
     fi
   done
-  echo "Unmounting $TARGETDIR..." >>"$LOG"
-  umount -R "$TARGETDIR" >>"$LOG" 2>&1
+  echo "Unmounting $TARGETDIR..." >>$LOG
+  umount -R $TARGETDIR >>$LOG 2>&1
 }
 
 # Function to count progress copy files
 log_and_count() {
-  # Define some variables locally
-  local progress whole tenth line
-
+  local progress whole tenth
   while read line; do
-    echo "$line" >>"$LOG"
+    echo "$line" >>$LOG
     copy_count=$((copy_count + 1))
     progress=$((1000 * copy_count / copy_total))
     if [ "$progress" != "$copy_progress" ]; then
       whole=$((progress / 10))
       tenth=$((progress % 10))
-      printf "Progress: %d.%d%% (%d of %d files)\n" "$whole" "$tenth" "$copy_count" "$copy_total"
+      printf "Progress: %d.%d%% (%d of %d files)\n" $whole $tenth $copy_count $copy_total
       copy_progress=$progress
     fi
   done
@@ -1577,22 +1490,18 @@ log_and_count() {
 
 # Function for copy rootfs
 copy_rootfs() {
-  # Define some variables locally
-  local tar_in status copy_total
-
-  tar_in="--create --one-file-system --xattrs"
+  local tar_in="--create --one-file-system --xattrs"
   TITLE="Check $LOG for details ..."
   INFOBOX "Counting files, please be patient ..." 4 80
-  copy_total=$(tar "${tar_in}" -v -f /dev/null / 2>/dev/null | wc -l)
+  copy_total=$(tar ${tar_in} -v -f /dev/null / 2>/dev/null | wc -l)
   export copy_total copy_count=0 copy_progress=
   clear
-  tar "${tar_in}" -f - / 2>/dev/null | \
-    tar --extract --xattrs --xattrs-include='*' --preserve-permissions -v -f - -C "$TARGETDIR" | \
+  tar ${tar_in} -f - / 2>/dev/null | \
+    tar --extract --xattrs --xattrs-include='*' --preserve-permissions -v -f - -C $TARGETDIR | \
     log_and_count | \
     DIALOG --title "${TITLE}" \
       --progressbox "Copying live image to target rootfs." 5 80
-  status=$?
-  if [ "$status" -ne 0 ]; then
+  if [ $? -ne 0 ]; then
     DIE 1
   fi
   unset copy_total copy_count copy_percent
@@ -1600,14 +1509,11 @@ copy_rootfs() {
 
 # Function for install packages
 install_packages() {
-  # Define some variables locally
-  local _grub _syspkg _arch status
-  _grub=
-  _syspkg=
+  local _grub= _syspkg=
 
   if [ "$(get_option BOOTLOADER)" != none ]; then
     if [ -n "$EFI_SYSTEM" ]; then
-      if [ "$EFI_FW_BITS" -eq 32 ]; then
+      if [ $EFI_FW_BITS -eq 32 ]; then
         _grub="grub-i386-efi"
       else
         _grub="grub-x86_64-efi"
@@ -1619,41 +1525,38 @@ install_packages() {
 
   _syspkg="base-system"
 
-  mkdir -p "$TARGETDIR"/var/db/xbps/keys "$TARGETDIR"/usr/share
-  cp -a /usr/share/xbps.d "$TARGETDIR"/usr/share/
-  cp /var/db/xbps/keys/*.plist "$TARGETDIR"/var/db/xbps/keys
+  mkdir -p $TARGETDIR/var/db/xbps/keys $TARGETDIR/usr/share
+  cp -a /usr/share/xbps.d $TARGETDIR/usr/share/
+  cp /var/db/xbps/keys/*.plist $TARGETDIR/var/db/xbps/keys
   if [ -n "$MIRROR_DONE" ]; then
-    mkdir -p "$TARGETDIR"/etc
-    cp -a /etc/xbps.d "$TARGETDIR"/etc
+    mkdir -p $TARGETDIR/etc
+    cp -a /etc/xbps.d $TARGETDIR/etc
   fi
-  mkdir -p "$TARGETDIR"/boot/grub
+  mkdir -p $TARGETDIR/boot/grub
 
   _arch=$(xbps-uhelper arch)
 
-  stdbuf -oL env XBPS_ARCH="${_arch}" \
-    xbps-install  -r "$TARGETDIR" -SyU "${_syspkg}" "${_grub}" 2>&1 | \
+  stdbuf -oL env XBPS_ARCH=${_arch} \
+    xbps-install  -r $TARGETDIR -SyU ${_syspkg} ${_grub} 2>&1 | \
     DIALOG --title "Installing base system packages..." \
       --programbox 24 80
   if [ $? -ne 0 ]; then
     DIE 1
   fi
-  xbps-reconfigure -r "$TARGETDIR" -f base-files >/dev/null 2>&1
-  stdbuf -oL chroot "$TARGETDIR" xbps-reconfigure -a 2>&1 | \
+  xbps-reconfigure -r $TARGETDIR -f base-files >/dev/null 2>&1
+  stdbuf -oL chroot $TARGETDIR xbps-reconfigure -a 2>&1 | \
     DIALOG --title "Configuring base system packages..." --programbox 24 80
-  status=$?
-  if [ "$status" -ne 0 ]; then
+  if [ $? -ne 0 ]; then
     DIE 1
   fi
 }
 
 # Function with menu for choose services to start at boot
 menu_services() {
-  # Define some variables locally
-  local sv _status _checklist="" status
-
+  local sv _status _checklist=""
   # filter out services that probably shouldn't be messed with
   local sv_ignore='^(agetty-(tty[1-9]|generic|serial|console)|udevd|sulogin)$'
-  find "$TARGETDIR"/etc/runit/runsvdir/default -mindepth 1 -maxdepth 1 -xtype d -printf '%f\n' | \
+  find $TARGETDIR/etc/runit/runsvdir/default -mindepth 1 -maxdepth 1 -xtype d -printf '%f\n' | \
     grep -Ev "$sv_ignore" | sort -u > "$TARGET_SERVICES"
   while true; do
     while read -r sv; do
@@ -1665,10 +1568,9 @@ menu_services() {
         fi
         _checklist+=" ${sv} ${sv} ${_status}"
       fi
-    done < <(find "$TARGETDIR"/etc/sv -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | grep -Ev "$sv_ignore" | sort -u)
-    DIALOG --no-tags --checklist "Select services to enable:" 20 60 18 "${_checklist}"
-    status=$?
-    if [ "$status" -eq 0 ]; then
+    done < <(find $TARGETDIR/etc/sv -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | grep -Ev "$sv_ignore" | sort -u)
+    DIALOG --no-tags --checklist "Select services to enable:" 20 60 18 ${_checklist}
+    if [ $? -eq 0 ]; then
       comm -13 "$TARGET_SERVICES" <(cat "$ANSWER" | tr ' ' '\n') | while read -r sv; do
         enable_service "$sv"
       done
@@ -1694,19 +1596,16 @@ disable_service() {
 
 # Function for menu install
 menu_install() {
-  # Define some variables locally
-  local TO_REMOVE pkg USERLOGIN status
-
   ROOTPASSWORD_DONE="$(get_option ROOTPASSWORD)"
   BOOTLOADER_DONE="$(get_option BOOTLOADER)"
 
   if [ -z "$ROOTPASSWORD_DONE" ]; then
     DIALOG --msgbox "${BOLD}The root password has not been configured, \
-please do so before starting the installation.${RESET}" "${MSGBOXSIZE}"
+please do so before starting the installation.${RESET}" ${MSGBOXSIZE}
     return 1
   elif [ -z "$BOOTLOADER_DONE" ]; then
     DIALOG --msgbox "${BOLD}The disk to install the bootloader has not been \
-configured, please do so before starting the installation.${RESET}" "${MSGBOXSIZE}"
+configured, please do so before starting the installation.${RESET}" ${MSGBOXSIZE}
     return 1
   fi
 
@@ -1716,7 +1615,7 @@ configured, please do so before starting the installation.${RESET}" "${MSGBOXSIZ
 
   if [ -z "$FILESYSTEMS_DONE" ]; then
     DIALOG --msgbox "${BOLD}Required filesystems were not configured, \
-please do so before starting the installation.${RESET}" "${MSGBOXSIZE}"
+please do so before starting the installation.${RESET}" ${MSGBOXSIZE}
     return 1
   fi
 
@@ -1742,33 +1641,33 @@ ${BOLD}Do you want to continue?${RESET}" 20 80 || return
 
   SOURCE_DONE="$(get_option SOURCE)"
   # If source not set use defaults.
-  if [ "$(get_option SOURCE)" = "local" ] || [ -z "$SOURCE_DONE" ]; then
+  if [ "$(get_option SOURCE)" = "local" -o -z "$SOURCE_DONE" ]; then
     copy_rootfs
     . /etc/default/live.conf
-    rm -f "$TARGETDIR"/etc/motd
-    rm -f "$TARGETDIR"/etc/issue
-    rm -f "$TARGETDIR"/usr/sbin/brgvos-installer
+    rm -f $TARGETDIR/etc/motd
+    rm -f $TARGETDIR/etc/issue
+    rm -f $TARGETDIR/usr/sbin/brgvos-installer
     # Remove modified sddm.conf to let sddm use the defaults.
-    rm -f "$TARGETDIR"/etc/sddm.conf
+    rm -f $TARGETDIR/etc/sddm.conf
     # Remove live user.
-    echo "Removing $USERNAME live user from targetdir ..." >>"$LOG"
-    chroot "$TARGETDIR" userdel -r "$USERNAME" >>"$LOG" 2>&1
-    rm -f "$TARGETDIR"/etc/sudoers.d/99-void-live
-    sed -i "s,GETTY_ARGS=\"--noclear -a $USERNAME\",GETTY_ARGS=\"--noclear\",g" "$TARGETDIR"/etc/sv/agetty-tty1/conf
+    echo "Removing $USERNAME live user from targetdir ..." >>$LOG
+    chroot $TARGETDIR userdel -r $USERNAME >>$LOG 2>&1
+    rm -f $TARGETDIR/etc/sudoers.d/99-void-live
+    sed -i "s,GETTY_ARGS=\"--noclear -a $USERNAME\",GETTY_ARGS=\"--noclear\",g" $TARGETDIR/etc/sv/agetty-tty1/conf
     TITLE="Check $LOG for details ..."
     INFOBOX "Rebuilding initramfs for target ..." 4 80
     echo "Rebuilding initramfs for target ..." >>$LOG
     # mount required fs
     mount_filesystems
-    chroot "$TARGETDIR" dracut --no-hostonly --add-drivers "ahci" --force >>"$LOG" 2>&1
+    chroot $TARGETDIR dracut --no-hostonly --add-drivers "ahci" --force >>$LOG 2>&1
     INFOBOX "Removing temporary packages from target ..." 4 80
-    echo "Removing temporary packages from target ..." >>"$LOG"
+    echo "Removing temporary packages from target ..." >>$LOG
     TO_REMOVE="xmirror dialog"
     # only remove espeakup and brltty if it wasn't enabled in the live environment
     if ! [ -e "/var/service/espeakup" ]; then
       TO_REMOVE+=" espeakup"
     fi
-    # For Gnome have dependency Orca and this have dependency brltty
+    # For Gnome have dependencie Orca and this have dependencie brltty
     #if ! [ -e "/var/service/brltty" ]; then
     #    TO_REMOVE+=" python3-brlapi brltty"
     #fi
@@ -1777,9 +1676,9 @@ ${BOLD}Do you want to continue?${RESET}" 20 80 || return
     fi
     # uninstall separately to minimise errors
     for pkg in $TO_REMOVE; do
-      xbps-remove -r "$TARGETDIR" -Ry "$pkg" >>"$LOG" 2>&1
+      xbps-remove -r $TARGETDIR -Ry "$pkg" >>$LOG 2>&1
     done
-    rmdir "$TARGETDIR"/mnt/target
+    rmdir $TARGETDIR/mnt/target
   else
     # mount required fs
     mount_filesystems
@@ -1790,9 +1689,9 @@ ${BOLD}Do you want to continue?${RESET}" 20 80 || return
   INFOBOX "Applying installer settings..." 4 80
 
   # copy target fstab.
-  install -Dm644 "$TARGET_FSTAB" "$TARGETDIR"/etc/fstab
+  install -Dm644 $TARGET_FSTAB $TARGETDIR/etc/fstab
   # Mount /tmp as tmpfs.
-  echo "tmpfs /tmp tmpfs defaults,nosuid,nodev 0 0" >> "$TARGETDIR"/etc/fstab
+  echo "tmpfs /tmp tmpfs defaults,nosuid,nodev 0 0" >> $TARGETDIR/etc/fstab
 
 
   # set up keymap, locale, timezone, hostname, root passwd and user account.
@@ -1804,7 +1703,7 @@ ${BOLD}Do you want to continue?${RESET}" 20 80 || return
   set_useraccount
 
   # Copy /etc/skel files for root.
-  cp "$TARGETDIR"/etc/skel/.[bix]* "$TARGETDIR"/root
+  cp $TARGETDIR/etc/skel/.[bix]* $TARGETDIR/root
 
   NETWORK_DONE="$(get_option NETWORK)"
   # network settings for target
@@ -1821,24 +1720,22 @@ ${BOLD}Do you want to continue?${RESET}" 20 80 || return
         enable_service wpa_supplicant
       fi
       enable_service dhcpcd
-    elif [ -n "$_dev" ] && [ "$_type" = "static" ]; then
+    elif [ -n "$_dev" -a "$_type" = "static" ]; then
       # static IP through dhcpcd.
-      mv "$TARGETDIR"/etc/dhcpcd.conf "$TARGETDIR"/etc/dhcpcd.conf.orig
+      mv $TARGETDIR/etc/dhcpcd.conf $TARGETDIR/etc/dhcpcd.conf.orig
       echo "# Static IP configuration set by the void-installer for $_dev." \
-        >"$TARGETDIR"/etc/dhcpcd.conf
-      {
-        echo "interface $_dev"
-        echo "static ip_address=$_ip"
-        echo "static routers=$_gw"
-        echo "static domain_name_servers=$_dns1 $_dns2"
-      } >>"$TARGETDIR"/etc/dhcpcd.conf
+        >$TARGETDIR/etc/dhcpcd.conf
+      echo "interface $_dev" >>$TARGETDIR/etc/dhcpcd.conf
+      echo "static ip_address=$_ip" >>$TARGETDIR/etc/dhcpcd.conf
+      echo "static routers=$_gw" >>$TARGETDIR/etc/dhcpcd.conf
+      echo "static domain_name_servers=$_dns1 $_dns2" >>$TARGETDIR/etc/dhcpcd.conf
       enable_service dhcpcd
     fi
   fi
 
-  if [ -d "$TARGETDIR"/etc/sudoers.d ]; then
+  if [ -d $TARGETDIR/etc/sudoers.d ]; then
     USERLOGIN="$(get_option USERLOGIN)"
-    if [ -z "$(echo "$(get_option USERGROUPS)" | grep -w wheel)" ] && [ -n "$USERLOGIN" ]; then
+    if [ -z "$(echo $(get_option USERGROUPS) | grep -w wheel)" -a -n "$USERLOGIN" ]; then
       # enable sudo for primary user USERLOGIN who is not member of wheel
       echo "# Enable sudo for login '$USERLOGIN'" > "$TARGETDIR/etc/sudoers.d/$USERLOGIN"
       echo "$USERLOGIN ALL=(ALL:ALL) ALL" >> "$TARGETDIR/etc/sudoers.d/$USERLOGIN"
@@ -1850,11 +1747,11 @@ ${BOLD}Do you want to continue?${RESET}" 20 80 || return
   fi
 
   # clean up polkit rule - it's only useful in live systems
-  rm -f "$TARGETDIR"/etc/polkit-1/rules.d/void-live.rules
+  rm -f $TARGETDIR/etc/polkit-1/rules.d/void-live.rules
 
   # enable text console for grub if chosen
   if [ "$(get_option TEXTCONSOLE)" = "1" ]; then
-    sed -i "$TARGETDIR"/etc/default/grub \
+    sed -i $TARGETDIR/etc/default/grub \
       -e 's|#\(GRUB_TERMINAL_INPUT\).*|\1=console|' \
       -e 's|#\(GRUB_TERMINAL_OUTPUT\).*|\1=console|'
   fi
@@ -1873,8 +1770,7 @@ ${BOLD}Do you want to continue?${RESET}" 20 80 || return
   # installed successfully.
   DIALOG --yesno "${BOLD}BRGV-OS Linux has been installed successfully!${RESET}\n
 Do you want to reboot the system?" ${YESNOSIZE}
-  status=$?
-  if [ "$status" -eq 0 ]; then
+  if [ $? -eq 0 ]; then
     shutdown -r now
   else
     return
@@ -1883,14 +1779,13 @@ Do you want to reboot the system?" ${YESNOSIZE}
 
 # Function for menu Source
 menu_source() {
-  # Define some variables locally
   local src=
 
   DIALOG --title " Select installation source " \
     --menu "$MENULABEL" 8 70 0 \
     "Local" "Packages from ISO image" \
     "Network" "Base system only, downloaded from official repository"
-  case "$(cat "$ANSWER")" in
+  case "$(cat $ANSWER)" in
   "Local") src="local";;
   "Network") src="net";
     if [ -z "$NETWORK_DONE" ]; then
@@ -1901,17 +1796,16 @@ menu_source() {
   *) return 1;;
   esac
   SOURCE_DONE=1
-  set_option SOURCE "$src"
+  set_option SOURCE $src
 }
 
 # Function for menu Mirror
 menu_mirror() {
-  xmirror 2>>"$LOG" && MIRROR_DONE=1
+  xmirror 2>>$LOG && MIRROR_DONE=1
 }
 
 # Function for main Menu
 menu() {
-  # Define some variables locally
   local AFTER_HOSTNAME
   if [ -z "$DEFITEM" ]; then
     DEFITEM="Keyboard"
@@ -1960,7 +1854,7 @@ menu() {
 
   if [ $? -eq 3 ]; then
     # Show settings
-    cp "$CONF_FILE" /tmp/conf_hidden.$$;
+    cp $CONF_FILE /tmp/conf_hidden.$$;
     sed -i "s/^ROOTPASSWORD .*/ROOTPASSWORD <-hidden->/" /tmp/conf_hidden.$$
     sed -i "s/^USERPASSWORD .*/USERPASSWORD <-hidden->/" /tmp/conf_hidden.$$
     DIALOG --title "Saved settings for installation" --textbox /tmp/conf_hidden.$$ 14 60
@@ -2015,3 +1909,4 @@ while true; do
 done
 
 exit 0
+# vim: set ts=4 sw=4 et:
