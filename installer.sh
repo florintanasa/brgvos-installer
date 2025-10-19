@@ -116,14 +116,14 @@ TARGETDIR=/mnt/target
 LOG="/tmp/install_brgvos_$date_time.log"
 
 # Create saving file for logs
-touch -f $LOG
+touch -f "$LOG"
 
 # Set the name for config file using by installer
 CONF_FILE=/tmp/.brgvos-installer.conf
 
 # Check if exist the file is not create the file
-if [ ! -f $CONF_FILE ]; then
-  touch -f $CONF_FILE
+if [ ! -f "$CONF_FILE" ]; then
+  touch -f "$CONF_FILE"
 fi
 
 # Set variables with the temporal files used by installer
@@ -144,7 +144,7 @@ fi
 if [ -e /sys/firmware/efi/systab ]; then
   EFI_SYSTEM=1
   EFI_FW_BITS=$(cat /sys/firmware/efi/fw_platform_size)
-  if [ $EFI_FW_BITS -eq 32 ]; then
+  if [ "$EFI_FW_BITS" -eq 32 ]; then
     EFI_TARGET=i386-efi
   else
     EFI_TARGET=x86_64-efi
@@ -191,30 +191,32 @@ INFOBOX() {
 
 # Function used for clean exit from script
 DIE() {
+  # Define some variable local
+  local rval
   rval=$1
   [ -z "$rval" ] && rval=0
   clear
-  rm -f $ANSWER $TARGET_FSTAB $TARGET_SERVICES
-  # reenable printk
+  rm -f "$ANSWER" "$TARGET_FSTAB" "$TARGET_SERVICES"
+  # re-enable printk
   if [ -w /proc/sys/kernel/printk ]; then
     echo 4 >/proc/sys/kernel/printk
   fi
   umount_filesystems
   cleanup
-  exit $rval
+  exit "$rval"
 }
 
 # Function used to save chosen options in configure file
 set_option() {
-  if grep -Eq "^${1} .*" $CONF_FILE; then
-    sed -i -e "/^${1} .*/d" $CONF_FILE
+  if grep -Eq "^${1} .*" "$CONF_FILE"; then
+    sed -i -e "/^${1} .*/d" "$CONF_FILE"
   fi
-  echo "${1} ${2}" >>$CONF_FILE
+  echo "${1} ${2}" >>"$CONF_FILE"
 }
 
 Function used to load saved chosen options from configure file
 get_option() {
-  grep -E "^${1} .*" $CONF_FILE | sed -e "s|^${1} ||"
+  grep -E "^${1} .*" "$CONF_FILE" | sed -e "s|^${1} ||"
 }
 
 # ISO-639 language names for locales
@@ -415,33 +417,34 @@ iso3166_country() {
 
 # Function to display the disc(s) size in GB and sector size from system
 show_disks() {
+  # Define some variables local
   local dev size sectorsize gbytes
 
   # IDE
   for dev in $(ls /sys/block|grep -E '^hd'); do
-    if [ "$(cat /sys/block/$dev/device/media)" = "disk" ]; then
+    if [ "$(cat /sys/block/"$dev"/device/media)" = "disk" ]; then
       # Find out nr sectors and bytes per sector;
       echo "/dev/$dev"
-      size=$(cat /sys/block/$dev/size)
-      sectorsize=$(cat /sys/block/$dev/queue/hw_sector_size)
-      gbytes="$(($size * $sectorsize / 1024 / 1024 / 1024))"
+      size=$(cat /sys/block/"$dev"/size)
+      sectorsize=$(cat /sys/block/"$dev"/queue/hw_sector_size)
+      gbytes="$((size * sectorsize / 1024 / 1024 / 1024))"
       echo "size:${gbytes}GB;sector_size:$sectorsize"
     fi
   done
   # SATA/SCSI and Virtual disks (virtio)
   for dev in $(ls /sys/block|grep -E '^([sv]|xv)d|mmcblk|nvme'); do
     echo "/dev/$dev"
-    size=$(cat /sys/block/$dev/size)
-    sectorsize=$(cat /sys/block/$dev/queue/hw_sector_size)
-    gbytes="$(($size * $sectorsize / 1024 / 1024 / 1024))"
+    size=$(cat /sys/block/"$dev"/size)
+    sectorsize=$(cat /sys/block/"$dev"/queue/hw_sector_size)
+    gbytes="$((size * sectorsize / 1024 / 1024 / 1024))"
     echo "size:${gbytes}GB;sector_size:$sectorsize"
   done
   # cciss(4) devices
   for dev in $(ls /dev/cciss 2>/dev/null|grep -E 'c[0-9]d[0-9]$'); do
     echo "/dev/cciss/$dev"
-    size=$(cat /sys/block/cciss\!$dev/size)
-    sectorsize=$(cat /sys/block/cciss\!$dev/queue/hw_sector_size)
-    gbytes="$(($size * $sectorsize / 1024 / 1024 / 1024))"
+    size=$(cat /sys/block/cciss\!"$dev"/size)
+    sectorsize=$(cat /sys/block/cciss\!"$dev"/queue/hw_sector_size)
+    gbytes="$((size * sectorsize / 1024 / 1024 / 1024))"
     echo "size:${gbytes}GB;sector_size:$sectorsize"
   done
 }
@@ -451,9 +454,13 @@ show_disks() {
 get_partfs() {
   # Get fs type from configuration if available. This ensures
   # that the user is shown the proper fs type if they install the system.
-  local part="$1"
-  local default="${2:-none}"
-  local fstype=$(grep "MOUNTPOINT ${part} " "$CONF_FILE"|awk '{print $3}')
+
+  # Define some variables local
+  local part default fstype
+
+  part="$1"
+  default="${2:-none}"
+  fstype=$(grep "MOUNTPOINT ${part} " "$CONF_FILE"|awk '{print $3}')
   echo "${fstype:-$default}"
 }
 
@@ -468,12 +475,12 @@ show_partitions() {
     # ATA/SCSI/SATA
     for p in /sys/block/$disk/$disk*; do
       if [ -d $p ]; then
-        part=$(basename $p)
-        fstype=$(lsblk -nfr /dev/$part|awk '{print $2}'|head -1)
+        part=$(basename "$p")
+        fstype=$(lsblk -nfr /dev/"$part"|awk '{print $2}'|head -1)
         [ "$fstype" = "iso9660" ] && continue
         [ "$fstype" = "crypto_LUKS" ] && continue
         [ "$fstype" = "LVM2_member" ] && continue
-        fssize=$(lsblk -nr /dev/$part|awk '{print $4}'|head -1)
+        fssize=$(lsblk -nr /dev/"$part"|awk '{print $4}'|head -1)
         echo "/dev/$part"
         echo "size:${fssize:-unknown};fstype:$(get_partfs "/dev/$part")"
       fi
@@ -481,40 +488,40 @@ show_partitions() {
   done
   # Device Mapper
   for p in /dev/mapper/*; do
-    part=$(basename $p)
+    part=$(basename "$p")
     [ "${part}" = "live-rw" ] && continue
     [ "${part}" = "live-base" ] && continue
     [ "${part}" = "control" ] && continue
 
-    fstype=$(lsblk -nfr $p|awk '{print $2}'|head -1)
-    fssize=$(lsblk -nr $p|awk '{print $4}'|head -1)
+    fstype=$(lsblk -nfr "$p"|awk '{print $2}'|head -1)
+    fssize=$(lsblk -nr "$p"|awk '{print $4}'|head -1)
     echo "${p}"
     echo "size:${fssize:-unknown};fstype:$(get_partfs "$p")"
   done
   # Software raid (md)
   for p in $(ls -d /dev/md* 2>/dev/null|grep '[0-9]'); do
     part=$(basename $p)
-    if cat /proc/mdstat|grep -qw $part; then
-      fstype=$(lsblk -nfr /dev/$part|awk '{print $2}')
+    if cat /proc/mdstat|grep -qw "$part"; then
+      fstype=$(lsblk -nfr /dev/"$part"|awk '{print $2}')
       [ "$fstype" = "crypto_LUKS" ] && continue
       [ "$fstype" = "LVM2_member" ] && continue
-      fssize=$(lsblk -nr /dev/$part|awk '{print $4}')
+      fssize=$(lsblk -nr /dev/"$part"|awk '{print $4}')
       echo "$p"
       echo "size:${fssize:-unknown};fstype:$(get_partfs "$p")"
     fi
   done
   # cciss(4) devices
   for part in $(ls /dev/cciss 2>/dev/null|grep -E 'c[0-9]d[0-9]p[0-9]+'); do
-    fstype=$(lsblk -nfr /dev/cciss/$part|awk '{print $2}')
+    fstype=$(lsblk -nfr /dev/cciss/"$part"|awk '{print $2}')
     [ "$fstype" = "crypto_LUKS" ] && continue
     [ "$fstype" = "LVM2_member" ] && continue
-    fssize=$(lsblk -nr /dev/cciss/$part|awk '{print $4}')
+    fssize=$(lsblk -nr /dev/cciss/"$part"|awk '{print $4}')
     echo "/dev/cciss/$part"
     echo "size:${fssize:-unknown};fstype:$(get_partfs "/dev/cciss/$part")"
   done
   if [ -e /sbin/lvs ]; then
     # LVM
-    lvs --noheadings|while read lvname vgname perms size; do
+    lvs --noheadings|while read -r lvname vgname perms size; do
       echo "/dev/mapper/${vgname}-${lvname}"
       echo "size:${size};fstype:$(get_partfs "/dev/mapper/${vgname}-${lvname}" lvm)"
     done
@@ -523,13 +530,15 @@ show_partitions() {
 
 # Function to chose and set the filesystem used to format the device selected and mount point
 menu_filesystems() {
-  local dev fstype fssize mntpoint reformat
+  # Define some variables local
+  local dev fstype fssize mntpoint reformat bdev ddev result
 
   while true; do
     DIALOG --ok-label "Change" --cancel-label "Done" \
       --title " Select the partition to edit " --menu "$MENULABEL" \
       ${MENUSIZE} $(show_partitions)
-    [ $? -ne 0 ] && return
+    result=$?
+    [ "$result" -ne 0 ] && return
 
     dev=$(cat $ANSWER)
     DIALOG --title " Select the filesystem type for $dev " \
@@ -545,14 +554,15 @@ menu_filesystems() {
       "vfat" "FAT32" \
       "xfs" "SGI's XFS"
     if [ $? -eq 0 ]; then
-      fstype=$(cat $ANSWER)
+      fstype=$(cat "$ANSWER")
     else
       continue
     fi
     if [ "$fstype" != "swap" ]; then
       DIALOG --inputbox "Please specify the mount point for $dev:" ${INPUTSIZE}
-      if [ $? -eq 0 ]; then
-        mntpoint=$(cat $ANSWER)
+      result=$?
+      if [ "$result" -eq 0 ]; then
+        mntpoint=$(cat "$ANSWER")
       elif [ $? -eq 1 ]; then
         continue
       fi
@@ -560,24 +570,25 @@ menu_filesystems() {
       mntpoint=swap
     fi
     DIALOG --yesno "Do you want to create a new filesystem on $dev?" ${YESNOSIZE}
-    if [ $? -eq 0 ]; then
+    result=$?
+    if [ "$result" -eq 0 ]; then
       reformat=1
     elif [ $? -eq 1 ]; then
       reformat=0
     else
       continue
     fi
-    fssize=$(lsblk -nr $dev|awk '{print $4}')
+    fssize=$(lsblk -nr "$dev"|awk '{print $4}')
     set -- "$fstype" "$fssize" "$mntpoint" "$reformat"
-    if [ -n "$1" -a -n "$2" -a -n "$3" -a -n "$4" ]; then
-      local bdev=$(basename $dev)
-      local ddev=$(basename $(dirname $dev))
+    if [ -n "$1" ] && [ -n "$2" ] && [ -n "$3" ] && [ -n "$4" ]; then
+      bdev=$(basename "$dev")
+      ddev=$(basename "$(dirname "$dev")")
       if [ "$ddev" != "dev" ]; then
-        sed -i -e "/^MOUNTPOINT \/dev\/${ddev}\/${bdev} .*/d" $CONF_FILE
+        sed -i -e "/^MOUNTPOINT \/dev\/${ddev}\/${bdev} .*/d" "$CONF_FILE"
       else
-        sed -i -e "/^MOUNTPOINT \/dev\/${bdev} .*/d" $CONF_FILE
+        sed -i -e "/^MOUNTPOINT \/dev\/${bdev} .*/d" "$CONF_FILE"
       fi
-      echo "MOUNTPOINT $dev $1 $2 $3 $4" >>$CONF_FILE
+      echo "MOUNTPOINT $dev $1 $2 $3 $4" >>"$CONF_FILE"
     fi
   done
   FILESYSTEMS_DONE=1
@@ -1223,9 +1234,10 @@ as FAT32, mountpoint /boot/efi and at least with 100MB of size." ${MSGBOXSIZE}
 
 # Function to create filesystems
 create_filesystems() {
-  local mnts dev mntpt fstype fspassno mkfs size rv uuid
+  # Define some variables local
+  local mnts dev mntpt fstype fspassno mkfs size rv uuid MKFS mem_total swap_need disk_name disk_type ROOT_UUID SWAP_UUID
 
-  mnts=$(grep -E '^MOUNTPOINT .*' $CONF_FILE | sort -k 5)
+  mnts=$(grep -E '^MOUNTPOINT .*' "$CONF_FILE" | sort -k 5)
   set -- ${mnts}
   while [ $# -ne 0 ]; do
     dev=$2; fstype=$3; mntpt="$5"; mkfs=$6
@@ -1233,64 +1245,68 @@ create_filesystems() {
 
     # swap partitions
     if [ "$fstype" = "swap" ]; then
-      swapoff $dev >/dev/null 2>&1
+      swapoff "$dev" >/dev/null 2>&1
       if [ "$mkfs" -eq 1 ]; then
-        mkswap $dev >>$LOG 2>&1
-        if [ $? -ne 0 ]; then
+        mkswap "$dev" >>"$LOG" 2>&1
+        rv=$?
+        if [ "$rv" -ne 0 ]; then
           DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
 failed to create swap on ${dev}!\ncheck $LOG for errors." ${MSGBOXSIZE}
           DIE 1
         fi
       fi
-      swapon $dev >>$LOG 2>&1
-      if [ $? -ne 0 ]; then
+      swapon "$dev" >>"$LOG" 2>&1
+      rv=$?
+      if [ "$rv" -ne 0 ]; then
         DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
 failed to activate swap on $dev!\ncheck $LOG for errors." ${MSGBOXSIZE}
         DIE 1
       fi
       # Add entry for target fstab
       uuid=$(blkid -o value -s UUID "$dev")
-      echo "UUID=$uuid none swap defaults 0 0" >>$TARGET_FSTAB
+      echo "UUID=$uuid none swap defaults 0 0" >>"$TARGET_FSTAB"
       continue
     fi
 
     if [ "$mkfs" -eq 1 ]; then
       case "$fstype" in
-      btrfs) MKFS="mkfs.btrfs -f"; modprobe btrfs >>$LOG 2>&1;;
-      btrfs_lvm) MKFS="mkfs.btrfs -f"; modprobe btrfs >>$LOG 2>&1;;
-      btrfs_lvm_crypt) MKFS="mkfs.btrfs -f"; modprobe btrfs >>$LOG 2>&1;;
-      ext2) MKFS="mke2fs -F"; modprobe ext2 >>$LOG 2>&1;;
-      ext3) MKFS="mke2fs -F -j"; modprobe ext3 >>$LOG 2>&1;;
-      ext4) MKFS="mke2fs -F -t ext4"; modprobe ext4 >>$LOG 2>&1;;
-      f2fs) MKFS="mkfs.f2fs -f"; modprobe f2fs >>$LOG 2>&1;;
-      vfat) MKFS="mkfs.vfat -F32"; modprobe vfat >>$LOG 2>&1;;
-      xfs) MKFS="mkfs.xfs -f -i sparse=0"; modprobe xfs >>$LOG 2>&1;;
+      btrfs) MKFS="mkfs.btrfs -f"; modprobe btrfs >>"$LOG" 2>&1;;
+      btrfs_lvm) MKFS="mkfs.btrfs -f"; modprobe btrfs >>"$LOG" 2>&1;;
+      btrfs_lvm_crypt) MKFS="mkfs.btrfs -f"; modprobe btrfs >>"$LOG" 2>&1;;
+      ext2) MKFS="mke2fs -F"; modprobe ext2 >>"$LOG" 2>&1;;
+      ext3) MKFS="mke2fs -F -j"; modprobe ext3 >>"$LOG" 2>&1;;
+      ext4) MKFS="mke2fs -F -t ext4"; modprobe ext4 >>"$LOG" 2>&1;;
+      f2fs) MKFS="mkfs.f2fs -f"; modprobe f2fs >>"$LOG" 2>&1;;
+      vfat) MKFS="mkfs.vfat -F32"; modprobe vfat >>"$LOG" 2>&1;;
+      xfs) MKFS="mkfs.xfs -f -i sparse=0"; modprobe xfs >>"$LOG" 2>&1;;
       esac
       # Calculate total memory in GB
       mem_total=$(free -t -g | grep -oP '\d+' | sed '10!d')
-      # Calculate swap need, usaly 2*RAM
-      sawp_need=$(($mem_total*2))
-      sawp_need+="G"
+      # Calculate swap need, usually 2*RAM
+      swap_need=$((mem_total*2))
+      swap_need+="G"
       # Prepare LVM
       if [ "$fstype" = "btrfs_lvm" ]; then
-        pvcreate $dev >>$LOG 2>&1
-        vgcreate vg0 $dev >>$LOG 2>&1
-        lvcreate --yes --name swap -L $sawp_need vg0 >>$LOG 2>&1
-        lvcreate --yes --name brgvos -l +100%FREE vg0 >>$LOG 2>&1
+        {
+          pvcreate "$dev"
+          vgcreate vg0 "$dev"
+          lvcreate --yes --name swap -L "$swap_need" vg0
+          lvcreate --yes --name brgvos -l +100%FREE vg0
+        } >>"$LOG" 2>&1
         TITLE="Check $LOG for details ..."
         INFOBOX "Creating filesystem btrfs on /dev/mapper/vg0-brgvos..." 8 80
-        echo "Running $MKFS -L brgvos /dev/mapper/vg0-brgvos..." >>$LOG
-        $MKFS -L brgvos /dev/mapper/vg0-brgvos >>$LOG 2>&1; rv=$?
-        if [ $rv -ne 0 ]; then
+        echo "Running $MKFS -L brgvos /dev/mapper/vg0-brgvos..." >>"$LOG"
+        $MKFS -L brgvos /dev/mapper/vg0-brgvos >>"$LOG" 2>&1; rv=$?
+        if [ "$rv" -ne 0 ]; then
           DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
 failed to create filesystem $fstype on $dev!\ncheck $LOG for errors." ${MSGBOXSIZE}
           DIE 1
         fi
         TITLE="Check $LOG for details ..."
         INFOBOX "Creating filesystem swap on /dev/mapper/vg0-swap..." 8 80
-        echo "Running $MKFS -L brgvos /dev/mapper/vg0-swap..." >>$LOG
-        mkswap /dev/mapper/vg0-swap >>$LOG 2>&1; rv=$?
-        if [ $rv -ne 0 ]; then
+        echo "Running $MKFS -L brgvos /dev/mapper/vg0-swap..." >>"$LOG"
+        mkswap /dev/mapper/vg0-swap >>"$LOG" 2>&1; rv=$?
+        if [ "$rv" -ne 0 ]; then
           DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
 failed to create filesystem swap on /dev/mapper/vg0-swap!\ncheck $LOG for errors." ${MSGBOXSIZE}
           DIE 1
@@ -1298,26 +1314,28 @@ failed to create filesystem swap on /dev/mapper/vg0-swap!\ncheck $LOG for errors
         # Prepare LVM with Crypt
       elif [ "$fstype" = "btrfs_lvm_crypt" ]; then
         PASSPHRASE=$(get_option USERPASSWORD)
-        echo -n "$PASSPHRASE" | cryptsetup luksFormat --type=luks1 $dev >>$LOG 2>&1
-        echo -n "$PASSPHRASE" | cryptsetup luksOpen $dev crypt -d - >>$LOG 2>&1
-        pvcreate /dev/mapper/crypt >>$LOG 2>&1
-        vgcreate vg0 /dev/mapper/crypt >>$LOG 2>&1
-        lvcreate --yes --name swap -L $sawp_need vg0 >>$LOG 2>&1
-        lvcreate --yes --name brgvos -l +100%FREE vg0 >>$LOG 2>&1
+        {
+          echo -n "$PASSPHRASE" | cryptsetup luksFormat --type=luks1 "$dev"
+          echo -n "$PASSPHRASE" | cryptsetup luksOpen "$dev" crypt -d -
+          pvcreate /dev/mapper/crypt
+          vgcreate vg0 /dev/mapper/crypt
+          lvcreate --yes --name swap -L "$swap_need" vg0
+          lvcreate --yes --name brgvos -l +100%FREE vg0
+        } >>"$LOG" 2>&1
         TITLE="Check $LOG for details .."
         INFOBOX "Creating filesystem btrfs în /dev/mapper/vg0-brgvos..." 8 80
-        echo "Running $MKFS -L brgvos /dev/mapper/vg0-brgvos..." >>$LOG
-        $MKFS -L brgvos /dev/mapper/vg0-brgvos >>$LOG 2>&1; rv=$?
-        if [ $rv -ne 0 ]; then
+        echo "Running $MKFS -L brgvos /dev/mapper/vg0-brgvos..." >>"$LOG"
+        $MKFS -L brgvos /dev/mapper/vg0-brgvos >>"$LOG" 2>&1; rv=$?
+        if [ "$rv" -ne 0 ]; then
           DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
 failed to create filesystem btrfs on /dev/mapper/vg0-brgvos!\nCheck $LOG for errors." ${MSGBOXSIZE}
           DIE 1
         fi
         TITLE="Check $LOG for details ..."
         INFOBOX "Creating filesystem swap în /dev/mapper/vg0-swap..." 8 80
-        echo "Running $MKFS -L brgvos /dev/mapper/vg0-swap..." >>$LOG
-        mkswap /dev/mapper/vg0-swap >>$LOG 2>&1; rv=$?
-        if [ $rv -ne 0 ]; then
+        echo "Running $MKFS -L brgvos /dev/mapper/vg0-swap..." >>"$LOG"
+        mkswap /dev/mapper/vg0-swap >>"$LOG" 2>&1; rv=$?
+        if [ "$rv" -ne 0 ]; then
           DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
 failed to create filesystem swap on /dev/mapper/vg0-swap!\nCheck $LOG for errors." ${MSGBOXSIZE}
           DIE 1
@@ -1325,9 +1343,9 @@ failed to create filesystem swap on /dev/mapper/vg0-swap!\nCheck $LOG for errors
       else
         TITLE="Check $LOG for details ..."
         INFOBOX "Creating filesystem $fstype on $dev for $mntpt ..." 8 80
-        echo "Running $MKFS $dev..." >>$LOG
-        $MKFS $dev >>$LOG 2>&1; rv=$?
-        if [ $rv -ne 0 ]; then
+        echo "Running $MKFS $dev..." >>"$LOG"
+        $MKFS "$dev" >>"$LOG" 2>&1; rv=$?
+        if [ "$rv" -ne 0 ]; then
           DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
 failed to create filesystem $fstype on $dev!\nCheck $LOG for errors." ${MSGBOXSIZE}
           DIE 1
@@ -1336,16 +1354,17 @@ failed to create filesystem $fstype on $dev!\nCheck $LOG for errors." ${MSGBOXSI
     fi
     # Mount rootfs the first one.
     [ "$mntpt" != "/" ] && continue
-    mkdir -p $TARGETDIR
+    mkdir -p "$TARGETDIR"
     if [ "$fstype" = "btrfs_lvm" ] || [ "$fstype" = "btrfs_lvm_crypt" ]; then
-      echo "Monting /dev/mapper/vg0-brgvos on $mntpt (btrfs)..." >>$LOG
-      mount /dev/mapper/vg0-brgvos $TARGETDIR >>$LOG 2>&1
+      echo "Mounting /dev/mapper/vg0-brgvos on $mntpt (btrfs)..." >>"$LOG"
+      mount /dev/mapper/vg0-brgvos "$TARGETDIR" >>"$LOG" 2>&1
       ROOTFS=$dev
     else
-      echo "Mounting $dev on $mntpt ($fstype)..." >>$LOG
-      mount -t $fstype $dev $TARGETDIR >>$LOG 2>&1
+      echo "Mounting $dev on $mntpt ($fstype)..." >>"$LOG"
+      mount -t "$fstype" "$dev" "$TARGETDIR" >>"$LOG" 2>&1
       ROOTFS=$dev
-      if [ $? -ne 0 ]; then
+      rv=$?
+      if [ "$rv" -ne 0 ]; then
         DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
 failed to mount $dev on ${mntpt}! check $LOG for errors." ${MSGBOXSIZE}
         DIE 1
@@ -1353,123 +1372,134 @@ failed to mount $dev on ${mntpt}! check $LOG for errors." ${MSGBOXSIZE}
     fi
     # Check if was mounted HDD or SSD
     disk_name=$(lsblk -ndo pkname "$dev")
-    disk_type=$(cat /sys/block/$disk_name/queue/rotational)
+    disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
     # Prepare options for mount command for HDD or SSD
     if [ "$disk_type" -eq 1 ]; then
       # options for HDD
       options="compress=zstd,noatime,space_cache=v2"
-      echo "Options used for mount and fstab $options" >>$LOG
+      echo "Options used for mount and fstab $options" >>"$LOG"
     else
       # options for SSD
       options="compress=zstd,noatime,space_cache=v2,discard=async,ssd"
-      echo "Options used for mount and fstab $options" >>$LOG
+      echo "Options used for mount and fstab $options" >>"$LOG"
     fi
     # Create subvolume @, @home, @var_log, @var_lib and @snapshots
     if [ "$fstype" = "btrfs" ]; then
-      btrfs subvolume create $TARGETDIR/@ >>$LOG 2>&1
-      btrfs subvolume create $TARGETDIR/@home >>$LOG 2>&1
-      btrfs subvolume create $TARGETDIR/@var_log >>$LOG 2>&1
-      btrfs subvolume create $TARGETDIR/@var_lib >>$LOG 2>&1
-      btrfs subvolume create $TARGETDIR/@snapshots >>$LOG 2>&1
-      umount $TARGETDIR >>$LOG 2>&1
-      mount -t $fstype -o $options,subvol=@ $dev $TARGETDIR >>$LOG 2>&1
-      mkdir -p $TARGETDIR/{home,var/log,var/lib,.snapshots} >>$LOG 2>&1
-      mount -t $fstype -o $options,subvol=@home $dev $TARGETDIR/home >>$LOG 2>&1
-      mount -t $fstype -o $options,subvol=@snapshots $dev $TARGETDIR/.snapshots >>$LOG 2>&1
-      mount -t $fstype -o $options,subvol=@var_log $dev $TARGETDIR/var/log >>$LOG 2>&1
-      mount -t $fstype -o $options,subvol=@var_lib $dev $TARGETDIR/var/lib >>$LOG 2>&1
+      {
+        btrfs subvolume create "$TARGETDIR"/@
+        btrfs subvolume create "$TARGETDIR"/@home
+        btrfs subvolume create "$TARGETDIR"/@var_log
+        btrfs subvolume create "$TARGETDIR"/@var_lib
+        btrfs subvolume create "$TARGETDIR"/@snapshots
+        umount "$TARGETDIR"
+        mount -t "$fstype" -o "$options",subvol=@ "$dev" "$TARGETDIR"
+        mkdir -p "$TARGETDIR"/{home,var/log,var/lib,.snapshots}
+        mount -t "$fstype" -o "$options",subvol=@home "$dev" "$TARGETDIR"/home
+        mount -t "$fstype" -o "$options",subvol=@snapshots "$dev" "$TARGETDIR"/.snapshots
+        mount -t "$fstype" -o "$options",subvol=@var_log "$dev" "$TARGETDIR"/var/log
+        mount -t "$fstype" -o "$options",subvol=@var_lib "$dev" "$TARGETDIR"/var/lib
+      } >>"$LOG" 2>&1
     elif [ "$fstype" = "btrfs_lvm" ] || [ "$fstype" = "btrfs_lvm_crypt" ]; then
-      btrfs subvolume create $TARGETDIR/@ >>$LOG 2>&1
-      btrfs subvolume create $TARGETDIR/@home >>$LOG 2>&1
-      btrfs subvolume create $TARGETDIR/@var_log >>$LOG 2>&1
-      btrfs subvolume create $TARGETDIR/@var_lib >>$LOG 2>&1
-      btrfs subvolume create $TARGETDIR/@snapshots >>$LOG 2>&1
-      umount $TARGETDIR >>$LOG 2>&1
-      mount -t btrfs -o $options,subvol=@ /dev/mapper/vg0-brgvos $TARGETDIR >>$LOG 2>&1
-      mkdir -p $TARGETDIR/{home,var/log,var/lib,.snapshots} >>$LOG 2>&1
-      mount -t btrfs -o $options,subvol=@home /dev/mapper/vg0-brgvos $TARGETDIR/home >>$LOG 2>&1
-      mount -t btrfs -o $options,subvol=@snapshots /dev/mapper/vg0-brgvos $TARGETDIR/.snapshots >>$LOG 2>&1
-      mount -t btrfs -o $options,subvol=@var_log /dev/mapper/vg0-brgvos $TARGETDIR/var/log >>$LOG 2>&1
-      mount -t btrfs -o $options,subvol=@var_lib /dev/mapper/vg0-brgvos $TARGETDIR/var/lib >>$LOG 2>&1
+      {
+        btrfs subvolume create "$TARGETDIR"/@
+        btrfs subvolume create "$TARGETDIR"/@home
+        btrfs subvolume create "$TARGETDIR"/@var_log
+        btrfs subvolume create "$TARGETDIR"/@var_lib
+        btrfs subvolume create "$TARGETDIR"/@snapshots
+        umount "$TARGETDIR"
+        mount -t btrfs -o "$options",subvol=@ /dev/mapper/vg0-brgvos "$TARGETDIR"
+        mkdir -p "$TARGETDIR"/{home,var/log,var/lib,.snapshots}
+        mount -t btrfs -o "$options",subvol=@home /dev/mapper/vg0-brgvos "$TARGETDIR"/home
+        mount -t btrfs -o "$options",subvol=@snapshots /dev/mapper/vg0-brgvos "$TARGETDIR"/.snapshots
+        mount -t btrfs -o "$options",subvol=@var_log /dev/mapper/vg0-brgvos "$TARGETDIR"/var/log
+        mount -t btrfs -o "$options",subvol=@var_lib /dev/mapper/vg0-brgvos "$TARGETDIR"/var/lib
+      } >>"$LOG" 2>&1
     fi
     # Add entry to target fstab
     uuid=$(blkid -o value -s UUID "$dev")
-    if [ "$fstype" = "f2fs" -o "$fstype" = "btrfs" -o "$fstype" = "btrfs_lvm" -o "$fstype" = "btrfs_lvm_crypt" -o "$fstype" = "xfs" ]; then
+    if [ "$fstype" = "f2fs" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "btrfs_lvm" ] \
+      || [ "$fstype" = "btrfs_lvm_crypt" ] || [ "$fstype" = "xfs" ]; then
       fspassno=0
     else
       fspassno=1
     fi
     if [ "$fstype" = "btrfs" ]; then
-      echo "UUID=$uuid / $fstype $options,subvol=@ 0 $fspassno" >>$TARGET_FSTAB
-      echo "UUID=$uuid /home $fstype $options,subvol=@home 0 $fspassno" >>$TARGET_FSTAB
-      echo "UUID=$uuid /.snapshots $fstype $options,subvol=@snapshots 0 $fspassno" >>$TARGET_FSTAB
-      echo "UUID=$uuid /var/log $fstype $options,subvol=@var_log 0 $fspassno" >>$TARGET_FSTAB
-      echo "UUID=$uuid /var/lib $fstype $options,subvol=@var_lib 0 $fspassno" >>$TARGET_FSTAB
+      {
+        echo "UUID=$uuid / $fstype $options,subvol=@ 0 $fspassno"
+        echo "UUID=$uuid /home $fstype $options,subvol=@home 0 $fspassno"
+        echo "UUID=$uuid /.snapshots $fstype $options,subvol=@snapshots 0 $fspassno"
+        echo "UUID=$uuid /var/log $fstype $options,subvol=@var_log 0 $fspassno"
+        echo "UUID=$uuid /var/lib $fstype $options,subvol=@var_lib 0 $fspassno"
+      } >>"$TARGET_FSTAB"
     elif [ "$fstype" = "btrfs_lvm" ] || [ "$fstype" = "btrfs_lvm_crypt" ]; then
       ROOT_UUID=$(blkid -s UUID -o value /dev/mapper/vg0-brgvos)
       SWAP_UUID=$(blkid -s UUID -o value /dev/mapper/vg0-swap)
-
-      echo "UUID=$ROOT_UUID / btrfs $options,subvol=@ 0 $fspassno" >>$TARGET_FSTAB
-      echo "UUID=$ROOT_UUID /home btrfs $options,subvol=@home 0 $fspassno" >>$TARGET_FSTAB
-      echo "UUID=$ROOT_UUID /.snapshots btrfs $options,subvol=@snapshots 0 $fspassno" >>$TARGET_FSTAB
-      echo "UUID=$ROOT_UUID /var/log btrfs $options,subvol=@var_log 0 $fspassno" >>$TARGET_FSTAB
-      echo "UUID=$ROOT_UUID /var/lib btrfs $options,subvol=@var_lib 0 $fspassno" >>$TARGET_FSTAB
-      echo "UUID=$SWAP_UUID none swap defaults 0 $fspassno" >>$TARGET_FSTAB
+      {
+        echo "UUID=$ROOT_UUID / btrfs $options,subvol=@ 0 $fspassno"
+        echo "UUID=$ROOT_UUID /home btrfs $options,subvol=@home 0 $fspassno"
+        echo "UUID=$ROOT_UUID /.snapshots btrfs $options,subvol=@snapshots 0 $fspassno"
+        echo "UUID=$ROOT_UUID /var/log btrfs $options,subvol=@var_log 0 $fspassno"
+        echo "UUID=$ROOT_UUID /var/lib btrfs $options,subvol=@var_lib 0 $fspassno"
+        echo "UUID=$SWAP_UUID none swap defaults 0 $fspassno"
+      } >>"$TARGET_FSTAB"
     else
-      echo "UUID=$uuid $mntpt $fstype defaults 0 $fspassno" >>$TARGET_FSTAB
+      echo "UUID=$uuid $mntpt $fstype defaults 0 $fspassno" >>"$TARGET_FSTAB"
     fi
   done
 
   # mount all filesystems in target rootfs
-  mnts=$(grep -E '^MOUNTPOINT .*' $CONF_FILE | sort -k 5)
+  mnts=$(grep -E '^MOUNTPOINT .*' "$CONF_FILE" | sort -k 5)
   set -- ${mnts}
   while [ $# -ne 0 ]; do
     dev=$2; fstype=$3; mntpt="$5"
     shift 6
-    [ "$mntpt" = "/" -o "$fstype" = "swap" ] && continue
+    [ "$mntpt" = "/" ] || [ "$fstype" = "swap" ] && continue
     mkdir -p ${TARGETDIR}${mntpt}
-    echo "Mounting $dev on $mntpt ($fstype)..." >>$LOG
-    mount -t $fstype $dev ${TARGETDIR}${mntpt} >>$LOG 2>&1
-    if [ $? -ne 0 ]; then
+    echo "Mounting $dev on $mntpt ($fstype)..." >>"$LOG"
+    mount -t "$fstype" "$dev" ${TARGETDIR}${mntpt} >>"$LOG" 2>&1
+    rv=$?
+    if [ "$rv" -ne 0 ]; then
       DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
 failed to mount $dev on $mntpt! check $LOG for errors." ${MSGBOXSIZE}
       DIE
     fi
     # Add entry to target fstab
     uuid=$(blkid -o value -s UUID "$dev")
-    if [ "$fstype" = "f2fs" -o "$fstype" = "btrfs" -o "$fstype" = "xfs" ]; then
+    if [ "$fstype" = "f2fs" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "xfs" ]; then
       fspassno=0
     else
       fspassno=2
     fi
-    echo "UUID=$uuid $mntpt $fstype defaults 0 $fspassno" >>$TARGET_FSTAB
+    echo "UUID=$uuid $mntpt $fstype defaults 0 $fspassno" >>"$TARGET_FSTAB"
   done
 }
 
 # Function to mount filesystems
 mount_filesystems() {
   for f in sys proc dev; do
-    [ ! -d $TARGETDIR/$f ] && mkdir $TARGETDIR/$f
-    echo "Mounting $TARGETDIR/$f..." >>$LOG
-    mount --rbind /$f $TARGETDIR/$f >>$LOG 2>&1
+    [ ! -d "$TARGETDIR"/"$f" ] && mkdir "$TARGETDIR"/"$f"
+    echo "Mounting $TARGETDIR/$f..." >>"$LOG"
+    mount --rbind /"$f" "$TARGETDIR"/"$f" >>"$LOG" 2>&1
   done
 }
 
 # Function to umount filesystems
 umount_filesystems() {
-  local mnts="$(grep -E '^MOUNTPOINT .* swap .*$' $CONF_FILE | sort -r -k 5)"
+  # Define some variables local
+  local mnts
+  mnts="$(grep -E '^MOUNTPOINT .* swap .*$' "$CONF_FILE" | sort -r -k 5)"
   set -- ${mnts}
   while [ $# -ne 0 ]; do
     local dev=$2; local fstype=$3
     shift 6
     if [ "$fstype" = "swap" ]; then
-      echo "Disabling swap space on $dev..." >>$LOG
-      swapoff $dev >>$LOG 2>&1
+      echo "Disabling swap space on $dev..." >>"$LOG"
+      swapoff "$dev" >>"$LOG" 2>&1
       continue
     fi
   done
-  echo "Unmounting $TARGETDIR..." >>$LOG
-  umount -R $TARGETDIR >>$LOG 2>&1
+  echo "Unmounting $TARGETDIR..." >>"$LOG"
+  umount -R "$TARGETDIR" >>"$LOG" 2>&1
 }
 
 # Function to count progress copy files
