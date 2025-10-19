@@ -593,6 +593,46 @@ menu_filesystems() {
   done
   FILESYSTEMS_DONE=1
 }
+# Function for menu LVM&LUKS
+menu_lvm_luks() {
+  # Define some local variables
+  local _desc _checklist _answers rv _lvm
+  # Description for check list box
+  _desc="Select if you wish to use LVM and/or crypt partition"
+  # Options for check list box
+  _checklist="
+  lvm LVM off \
+  crypto_luks CRYPTO_LUKS off"
+  # Create dialog
+  DIALOG --no-tags --checklist "$_desc" 20 60 2 ${_checklist}
+  # Verify if the user accept the dialog
+  rv=$?
+  if [ "$rv" -eq 0 ]; then
+    _answers=$(cat "$ANSWER")
+    if echo "$_answers" | grep -q "lvm"; then
+      set_option LVM "1"
+    else
+      set_option LVM "0"
+    fi
+    if echo "$_answers" | grep -q "crypto_luks"; then
+      set_option CRYPTO_LUKS "1"
+    else
+      set_option CRYPTO_LUKS "0"
+    fi
+  fi
+  # Inputbox is available only if LVM was selected
+  _lvm=$(get_option LVM)
+  if [ "$_lvm" -eq 1 ]; then
+    DIALOG --inputbox "Input volume name:" ${INPUTSIZE}
+    # Check if the user cancel the dialog
+    rv=$?
+    if [ "$rv" = 0 ]; then
+      set_option VOLNAME "$(cat "$ANSWER")"
+    fi
+  else
+    set_option VOLNAME ""
+  fi
+}
 
 # Function for chose partition tool for modify partition table
 menu_partitions() {
@@ -872,7 +912,7 @@ menu_useraccount() {
     fi
   done
 
-  _groups="wheel,audio,video,floppy,cdrom,optical,kvm,users,xbuilder"
+  _groups="wheel,audio,video,floppy,lp,dialout,cdrom,optical,kvm,plugdev,users,socklog,lpadmin,bluetooth,xbuilder"
   while true; do
     _desc="Select group membership for login '$(get_option USERLOGIN)':"
     for _group in $(cat /etc/group); do
@@ -1857,6 +1897,7 @@ menu() {
       "UserAccount" "Set primary user name and password" \
       "BootLoader" "Set disk to install bootloader" \
       "Partition" "Partition disk(s)" \
+      "LVM&LUKS" "Set LVM and crypto LUKS" \
       "Filesystems" "Configure filesystems and mount points" \
       "Install" "Start installation with saved settings" \
       "Exit" "Exit installation"
@@ -1877,6 +1918,7 @@ menu() {
       "UserAccount" "Set primary user name and password" \
       "BootLoader" "Set disk to install bootloader" \
       "Partition" "Partition disk(s)" \
+      "LVM&LUKS" "Set LVM and crypto LUKS" \
       "Filesystems" "Configure filesystems and mount points" \
       "Install" "Start installation with saved settings" \
       "Exit" "Exit installation"
@@ -1904,7 +1946,8 @@ menu() {
   "UserAccount") menu_useraccount && [ -n "$USERLOGIN_DONE" ] && [ -n "$USERPASSWORD_DONE" ] \
     && DEFITEM="BootLoader";;
   "BootLoader") menu_bootloader && [ -n "$BOOTLOADER_DONE" ] && DEFITEM="Partition";;
-  "Partition") menu_partitions && [ -n "$PARTITIONS_DONE" ] && DEFITEM="Filesystems";;
+  "Partition") menu_partitions && [ -n "$PARTITIONS_DONE" ] && DEFITEM="LVM&LUKS";;
+  "LVM&LUKS") menu_lvm_luks && [ -n "$PARTITIONS_DONE" ] && DEFITEM="Filesystems";;
   "Filesystems") menu_filesystems && [ -n "$FILESYSTEMS_DONE" ] && DEFITEM="Install";;
   "Install") menu_install;;
   "Exit") DIE;;
