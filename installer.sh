@@ -593,6 +593,7 @@ menu_filesystems() {
   done
   FILESYSTEMS_DONE=1
 }
+
 # Function for menu LVM&LUKS
 menu_lvm_luks() {
   # Define some local variables
