@@ -214,7 +214,7 @@ set_option() {
   echo "${1} ${2}" >>"$CONF_FILE"
 }
 
-Function used to load saved chosen options from configure file
+# Function used to load saved chosen options from configure file
 get_option() {
   grep -E "^${1} .*" "$CONF_FILE" | sed -e "s|^${1} ||"
 }
@@ -597,7 +597,7 @@ menu_filesystems() {
 # Function for menu LVM&LUKS
 menu_lvm_luks() {
   # Define some local variables
-  local _desc _checklist _answers rv _lvm
+  local _desc _checklist _answers rv _lvm _dev
   # Description for check list box
   _desc="Select if you wish to use LVM and/or crypt partition"
   # Options for check list box
@@ -624,14 +624,27 @@ menu_lvm_luks() {
   # Inputbox is available only if LVM was selected
   _lvm=$(get_option LVM)
   if [ "$_lvm" -eq 1 ]; then
-    DIALOG --inputbox "Input volume name:" ${INPUTSIZE}
+    while true; do
+      DIALOG --ok-label "Select" --cancel-label "Done" \
+        --title " Select only one partition for physical volume" --menu "$MENULABEL" \
+        ${MENUSIZE} $(show_partitions)
+      rv=$?
+      if [ "$rv" = 0 ]; then
+        _dev+=$(cat "$ANSWER")
+        _dev+=" "
+      fi
+      [ -z "$_dev" ] && return
+      set_option PV "${_dev[@]}"
+      [ "$rv" -ne 0 ] && break
+    done
+    DIALOG --inputbox "Input volume group name:" ${INPUTSIZE}
     # Check if the user cancel the dialog
     rv=$?
     if [ "$rv" = 0 ]; then
       set_option VOLNAME "$(cat "$ANSWER")"
+    else
+      set_option VOLNAME ""
     fi
-  else
-    set_option VOLNAME ""
   fi
 }
 
