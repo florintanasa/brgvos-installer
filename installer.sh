@@ -597,7 +597,7 @@ menu_filesystems() {
 # Function for menu LVM&LUKS
 menu_lvm_luks() {
   # Define some local variables
-  local _desc _checklist _answers rv _lvm _dev
+  local _desc _checklist _answers rv _lvm _dev _map _values
   # Description for check list box
   _desc="Select if you wish to use LVM and/or crypt partition"
   # Options for check list box
@@ -637,14 +637,38 @@ menu_lvm_luks() {
       set_option PV "${_dev[@]}"
       [ "$rv" -ne 0 ] && break
     done
-    DIALOG --inputbox "Input volume group name:" ${INPUTSIZE}
-    # Check if the user cancel the dialog
+    # open form dialog
+    exec 3>&1
+    # Store data to $VALUES variable
+    _values=$(dialog --ok-label "Submit" \
+      --backtitle "Linux User Managment" \
+      --title "Useradd" \
+      --form "Create a new user" \
+      15 60 0 \
+      "Volume group name (VG):"          1 1	"" 	1 32 18 0 \
+      "Logical volume name for swap:"    2 1	"" 	2 32 18 0 \
+      "Logical volume name for rootfs:"  3 1	"" 	3 32 18 0 \
+      "Size for LVSWAP (GB):"            4 1	"" 	4 32  6 0 \
+      "Size for LVROOTFS (GB):"          5 1	"" 	5 32  6  0 \
+      2>&1 1>&3)
     rv=$?
+    # Check if the user not cancel the dialog
     if [ "$rv" = 0 ]; then
-      set_option VOLNAME "$(cat "$ANSWER")"
+      mapfile -t _map <<< "$_values"
+      set_option VGNAME "${_map[0]}"
+      set_option LVSWAP "${_map[1]}"
+      set_option LVROOTFS "${_map[2]}"
+      set_option SLVSWAP "${_map[3]}"
+      set_option SLVROOTFS "${_map[4]}"
     else
-      set_option VOLNAME ""
+      set_option VGNAME ""
+      set_option LVSWAP ""
+      set_option LVROOTFS ""
+      set_option SLVSWAP ""
+      set_option SLVROOTFS ""
     fi
+    # close form dialog
+    exec 3>&-
   fi
 }
 
