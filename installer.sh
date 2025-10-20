@@ -597,10 +597,24 @@ menu_filesystems() {
 # Function for menu LVM&LUKS
 menu_lvm_luks() {
   # Define some local variables
-  local _desc _checklist _answers rv _lvm _dev _map _values
-  # Description for check list box
+  local _desc _checklist _answers rv _lvm _dev _map _values _vgname _lvswap _lvrootfs _slvswap _slvrootfs
+
+  # Load some variables from configure file if exist else define presets
+  _vgname=$(get_option VGNAME)
+  _lvswap=$(get_option LVSWAP)
+  _lvrootfs=$(get_option LVROOTFS)
+  _slvswap=$(get_option SLVSWAP)
+  _slvrootfs=$(get_option SLVROOTFS)
+
+  [ -z "$_vgname" ] && _vgname="vg0"
+  [ -z "$_lvrootfs" ] && _lvrootfs="lvbrgvos"
+  [ -z "$_lvswap" ] && _lvswap="lvswap"
+  [ -z "$_slvrootfs" ] && _slvrootfs="100"
+  [ -z "$_slvswap" ] && _slvswap="8"
+
+  # Description for checklist box
   _desc="Select if you wish to use LVM and/or crypt partition"
-  # Options for check list box
+  # Options for checklist box
   _checklist="
   lvm LVM off \
   crypto_luks CRYPTO_LUKS off"
@@ -637,22 +651,22 @@ menu_lvm_luks() {
       set_option PV "${_dev[@]}"
       [ "$rv" -ne 0 ] && break
     done
-    # open form dialog
+    # Open form dialog
     exec 3>&1
     # Store data to $VALUES variable
-    _values=$(dialog --ok-label "Submit" \
-      --backtitle "Linux User Managment" \
-      --title "Useradd" \
-      --form "Create a new user" \
+    _values=$(dialog --colors --keep-tite --no-shadow --no-mouse --ok-label "Save" \
+      --backtitle "${BOLD}${WHITE}BRGV-OS Linux installation -- https://github.com/florintanasa/brgvos-void (@@MKLIVE_VERSION@@)${RESET}" \
+      --title "Define some necessary data" \
+      --form "Input the names for volume group, logical volume for swap and rootfs, also the size for this" \
       15 60 0 \
-      "Volume group name (VG):"          1 1	"" 	1 32 18 0 \
-      "Logical volume name for swap:"    2 1	"" 	2 32 18 0 \
-      "Logical volume name for rootfs:"  3 1	"" 	3 32 18 0 \
-      "Size for LVSWAP (GB):"            4 1	"" 	4 32  6 0 \
-      "Size for LVROOTFS (GB):"          5 1	"" 	5 32  6  0 \
+      "Volume group name (VG):"          1 1	"$_vgname" 	    1 32 18 0 \
+      "Logical volume name for swap:"    2 1	"$_lvswap" 	    2 32 18 0 \
+      "Logical volume name for rootfs:"  3 1	"$_lvrootfs" 	  3 32 18 0 \
+      "Size for LVSWAP (GB):"            4 1	"$_slvswap"   	4 32  6 0 \
+      "Size for LVROOTFS (GB):"          5 1	"$_slvrootfs" 	5 32  6 0 \
       2>&1 1>&3)
     rv=$?
-    # Check if the user not cancel the dialog
+    # Check if the user press Save button
     if [ "$rv" = 0 ]; then
       mapfile -t _map <<< "$_values"
       set_option VGNAME "${_map[0]}"
@@ -661,13 +675,14 @@ menu_lvm_luks() {
       set_option SLVSWAP "${_map[3]}"
       set_option SLVROOTFS "${_map[4]}"
     else
+      # If the user press Cancel button then eliminate all values
       set_option VGNAME ""
       set_option LVSWAP ""
       set_option LVROOTFS ""
       set_option SLVSWAP ""
       set_option SLVROOTFS ""
     fi
-    # close form dialog
+    # Close form dialog
     exec 3>&-
   fi
 }
