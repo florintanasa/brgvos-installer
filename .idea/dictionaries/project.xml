@@ -35,6 +35,8 @@
       <w>loglevel</w>
       <w>lpadmin</w>
       <w>lvname</w>
+      <w>lvrootfs</w>
+      <w>lvswap</w>
       <w>mdstat</w>
       <w>menubox</w>
       <w>menulabel</w>
@@ -68,6 +70,8 @@
       <w>secondpass</w>
       <w>sectorsize</w>
       <w>skel</w>
+      <w>slvrootfs</w>
+      <w>slvswap</w>
       <w>socklog</w>
       <w>subvol</w>
       <w>sulogin</w>
