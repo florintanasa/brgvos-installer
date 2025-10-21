@@ -597,7 +597,7 @@ menu_filesystems() {
 # Function for menu LVM&LUKS
 menu_lvm_luks() {
   # Define some local variables
-  local _desc _checklist _answers rv _lvm _dev _map _values _vgname _lvswap _lvrootfs _slvswap _slvrootfs
+  local _desc _checklist _answers rv _lvm _dev _map _values _vgname _lvswap _lvrootfs _slvswap _slvrootfs _mem_total
 
   # Load some variables from configure file if exist else define presets
   _vgname=$(get_option VGNAME)
@@ -610,7 +610,14 @@ menu_lvm_luks() {
   [ -z "$_lvrootfs" ] && _lvrootfs="lvbrgvos"
   [ -z "$_lvswap" ] && _lvswap="lvswap"
   [ -z "$_slvrootfs" ] && _slvrootfs="100"
-  [ -z "$_slvswap" ] && _slvswap="8"
+  if [ -z "$_slvswap" ]; then
+    # Calculate total memory in GB
+    _mem_total=$(free -t -g | grep -oP '\d+' | sed '10!d')
+    # Calculate swap need, usually 2*RAM
+    _slvswap=$((_mem_total*2))
+    #_slvswap+="G"
+    #_slvswap="8"
+  fi
 
   # Description for checklist box
   _desc="Select if you wish to use LVM and/or crypt partition"
@@ -653,7 +660,7 @@ menu_lvm_luks() {
     done
     # Open form dialog
     exec 3>&1
-    # Store data to $VALUES variable
+    # Store data to _values variable
     _values=$(dialog --colors --keep-tite --no-shadow --no-mouse --ok-label "Save" \
       --backtitle "${BOLD}${WHITE}BRGV-OS Linux installation -- https://github.com/florintanasa/brgvos-void (@@MKLIVE_VERSION@@)${RESET}" \
       --title "Define some necessary data" \
@@ -663,7 +670,7 @@ menu_lvm_luks() {
       "Logical volume name for swap:"    2 1	"$_lvswap" 	    2 32 18 0 \
       "Logical volume name for rootfs:"  3 1	"$_lvrootfs" 	  3 32 18 0 \
       "Size for LVSWAP (GB):"            4 1	"$_slvswap"   	4 32  6 0 \
-      "Size for LVROOTFS (GB):"          5 1	"$_slvrootfs" 	5 32  6 0 \
+      "Size for LVROOTFS (%):"          5 1	"$_slvrootfs" 	5 32  6 0 \
       2>&1 1>&3)
     rv=$?
     # Check if the user press Save button
@@ -684,6 +691,29 @@ menu_lvm_luks() {
     fi
     # Close form dialog
     exec 3>&-
+  fi
+  set_lvm_luks
+}
+
+set_lvm_luks()() {
+  local _pv _vgname _lvm _lvswap _lvrootfs _slvswap _slvrootfs
+  # Load variables from configure file if exist else define presets
+  _pv=$(get_option PV)
+  _lvm=$(get_option LVM)
+  _pv=$(get_option CRYPTO_LUKS)
+  _vgname=$(get_option VGNAME)
+  _lvswap=$(get_option LVSWAP)
+  _lvrootfs=$(get_option LVROOTFS)
+  _slvswap=$(get_option SLVSWAP)
+  _slvrootfs=$(get_option SLVROOTFS)
+
+  if [ "$_lvm" -eq 1]; then
+    {
+      pvcreate "$_pv"
+      vgcreate "$_vgname" "$_pv"
+      lvcreate --yes --name "$_lvswap" -L "$_slvswap" vg0
+      lvcreate --yes --name "$_lvrootfs" -l +"$_slvrootfs"%FREE vg0
+    } >>"$LOG" 2>&1
   fi
 }
 
