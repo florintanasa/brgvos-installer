@@ -696,7 +696,7 @@ menu_lvm_luks() {
 }
 
 set_lvm_luks() {
-  local _pv _vgname _lvm _lvswap _lvrootfs _slvswap _slvrootfs _crypt
+  local _pv _vgname _lvm _lvswap _lvrootfs _slvswap _slvrootfs _crypt _device _crypt_name _index _cd
   # Load variables from configure file if exist else define presets
   _pv=$(get_option PV)
   _lvm=$(get_option LVM)
@@ -707,13 +707,37 @@ set_lvm_luks() {
   _slvswap=$(get_option SLVSWAP)
   _slvrootfs=$(get_option SLVROOTFS)
 
+  # Check if user choose to encrypt the device
+  if [ "$_crypt" = 1 ]; then
+      PASSPHRASE=$(get_option USERPASSWORD)
+      _index=0  # Initialize an index for unique naming
+      for _device in $_pv; do  # Ensure $_pv contains the correct devices
+        {
+            echo -n "$PASSPHRASE" | cryptsetup luksFormat --type=luks1 "$_device" -d -
+            # Generate a unique name based on the index
+            _crypt_name="crypt_${_index}"
+            echo -n "$PASSPHRASE" | cryptsetup luksOpen "$_device" "$_crypt_name" -d -
+           _cd+="/dev/mapper/$_crypt_name "
+           _cd+=" "
+           _index=$((_index + 1))  # Increment the index for the next device
+        } >>"$LOG" 2>&1
+    done
+        _cd=$(echo "$_cd"|awk '{$1=$1;print}')
+  fi
+
+  # Check if user choose use LVM for device
   if [ "$_lvm" = 1 ]; then
     {
       # Create physical volume
       set -- $_pv
       pvcreate "$@"
       # Create volume group
-      set -- $_pv
+      if [ "$_crypt" = 0 ]; then
+         set -- $_pv
+      fi
+      if [ "$_crypt" = 1 ];then
+         set -- $_cd
+      fi
       vgcreate "$_vgname" "$@"
       # Create logical volume for swap and rootfs
       lvcreate --yes --name "$_lvswap" -L "$_slvswap"G "$_vgname"
