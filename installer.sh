@@ -615,8 +615,6 @@ menu_lvm_luks() {
     _mem_total=$(free -t -g | grep -oP '\d+' | sed '10!d')
     # Calculate swap need, usually 2*RAM
     _slvswap=$((_mem_total*2))
-    #_slvswap+="G"
-    #_slvswap="8"
   fi
 
   # Description for checklist box
