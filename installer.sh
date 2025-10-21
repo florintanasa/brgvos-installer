@@ -655,9 +655,11 @@ menu_lvm_luks() {
         _dev+=" "
       fi
       [ -z "$_dev" ] && return
-      set_option PV "${_dev[@]}"
       [ "$rv" -ne 0 ] && break
     done
+    # Delete last space
+    _dev=$(echo "$_dev"|awk '{$1=$1;print}')
+    set_option PV "$_dev"
     # Open form dialog
     exec 3>&1
     # Store data to _values variable
@@ -692,27 +694,32 @@ menu_lvm_luks() {
     # Close form dialog
     exec 3>&-
   fi
-  set_lvm_luks
+  #set_lvm_luks
 }
 
-set_lvm_luks()() {
-  local _pv _vgname _lvm _lvswap _lvrootfs _slvswap _slvrootfs
+set_lvm_luks() {
+  local _pv _vgname _lvm _lvswap _lvrootfs _slvswap _slvrootfs _crypt
   # Load variables from configure file if exist else define presets
   _pv=$(get_option PV)
   _lvm=$(get_option LVM)
-  _pv=$(get_option CRYPTO_LUKS)
+  _crypt=$(get_option CRYPTO_LUKS)
   _vgname=$(get_option VGNAME)
   _lvswap=$(get_option LVSWAP)
   _lvrootfs=$(get_option LVROOTFS)
   _slvswap=$(get_option SLVSWAP)
   _slvrootfs=$(get_option SLVROOTFS)
 
-  if [ "$_lvm" -eq 1]; then
+  if [ "$_lvm" = 1 ]; then
     {
-      pvcreate "$_pv"
-      vgcreate "$_vgname" "$_pv"
-      lvcreate --yes --name "$_lvswap" -L "$_slvswap" vg0
-      lvcreate --yes --name "$_lvrootfs" -l +"$_slvrootfs"%FREE vg0
+      # Create physical volume
+      set -- $_pv
+      pvcreate "$@"
+      # Create volume group
+      set -- $_pv
+      vgcreate "$_vgname" "$@"
+      # Create logical volume for swap and rootfs
+      lvcreate --yes --name "$_lvswap" -L "$_slvswap"G "$_vgname"
+      lvcreate --yes --name "$_lvrootfs" -l +"$_slvrootfs"%FREE "$_vgname"
     } >>"$LOG" 2>&1
   fi
 }
