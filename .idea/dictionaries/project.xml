@@ -34,6 +34,7 @@
       <w>loadkeys</w>
       <w>loglevel</w>
       <w>lpadmin</w>
+      <w>lvbrgvos</w>
       <w>lvname</w>
       <w>lvrootfs</w>
       <w>lvswap</w>
