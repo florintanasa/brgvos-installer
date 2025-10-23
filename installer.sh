@@ -703,7 +703,7 @@ menu_lvm_luks() {
 }
 
 set_lvm_luks() {
-  local _pv _vgname _lvm _lvswap _lvrootfs _slvswap _slvrootfs _crypt _device _crypt_name _index _cd
+  local _pv _vgname _lvm _lvswap _lvrootfs _slvswap _slvrootfs _crypt _device _crypt_name _index _cd _devcrypt
   # Load variables from configure file if exist else define presets
   _pv=$(get_option PV)
   _lvm=$(get_option LVM)
@@ -728,24 +728,30 @@ set_lvm_luks() {
            _cd+=" "
            _index=$((_index + 1))  # Increment the index for the next device
         } >>"$LOG" 2>&1
+        # Check if LVM was not selected
+        if [ "$_lvm" = 0 ]; then
+        # Got device encrypt
+        _devcrypt=$(for s in /sys/class/block/$(basename "$(readlink -f /dev/mapper/crypt_0)")/slaves/*; do echo "/dev/${s##*/}"; done)
+        export DEVCRYPT="${_devcrypt[0]}"
+        echo "Device $DEVCRYPT is encrypt" >>"$LOG"
+        fi
     done
         _cd=$(echo "$_cd"|awk '{$1=$1;print}')
   fi
 
-  # Check if user choose use LVM for device
+  # Check if user choose to use LVM for devices
   if [ "$_lvm" = 1 ]; then
     {
-      # Create physical volume
-      set -- $_pv
-      pvcreate "$@"
-      # Create volume group
+      # Check if user choose to use LVM without encrypt for devices
       if [ "$_crypt" = 0 ]; then
-         set -- $_pv
+        set -- $_pv; pvcreate "$@" # Create physical volume
+        set -- $_pv; vgcreate "$_vgname" "$@" # Create volume group
       fi
+      # Check if user choose to use LVM with encrypt for devices
       if [ "$_crypt" = 1 ];then
-         set -- $_cd
+        set -- $_cd; pvcreate "$@" # Create physical volume
+        set -- $_cd; vgcreate "$_vgname" "$@" # Create volume group
       fi
-      vgcreate "$_vgname" "$@"
       # Create logical volume for swap and rootfs
       lvcreate --yes --name "$_lvswap" -L "$_slvswap"G "$_vgname"
       lvcreate --yes --name "$_lvrootfs" -l +"$_slvrootfs"%FREE "$_vgname"
