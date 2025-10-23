@@ -643,58 +643,63 @@ menu_lvm_luks() {
   # Inputbox is available only if LVM and/or CRYPTO_LUKS was selected
   _lvm=$(get_option LVM)
   _crypto_luks=$(get_option CRYPTO_LUKS)
+  # Check if user select LVM or CRYPTO_LUKS
   if [ "$_lvm" -eq 1 ] || [ "$_crypto_luks" -eq 1 ]; then
     while true; do
-      DIALOG --ok-label "Select" --cancel-label "Done" \
+      DIALOG --ok-label "Select" --cancel-label "Done" --extra-button --extra-label "Abort" \
         --title " Select partition(s) for physical volume" --menu "$MENULABEL" \
         ${MENUSIZE} $(show_partitions)
       rv=$?
-      if [ "$rv" = 0 ]; then
+      if [ "$rv" = 0 ]; then # Check if user press Select button
         _dev+=$(cat "$ANSWER")
         _dev+=" "
-      fi
-      [ -z "$_dev" ] && return
-      [ "$rv" -ne 0 ] && break
-      if [ "$_crypto_luks" -eq 1 ]; then
-        # Call function set_lvm_luks
-        set_lvm_luks
+      elif [[ -z "$_dev" ]] || [[ "$rv" -eq 3 ]]; then # Check if user press Abort or Done buttons without selection
+        return
+      elif [ "$rv" -ne 0 ]; then # Check if user press Done button
+        break
       fi
     done
     # Delete last space
     _dev=$(echo "$_dev"|awk '{$1=$1;print}')
     set_option PV "$_dev"
-    # Open form dialog
-    exec 3>&1
-    # Store data to _values variable
-    _values=$(dialog --colors --keep-tite --no-shadow --no-mouse --ok-label "Save" \
-      --backtitle "${BOLD}${WHITE}BRGV-OS Linux installation -- https://github.com/florintanasa/brgvos-void (@@MKLIVE_VERSION@@)${RESET}" \
-      --title "Define some necessary data" \
-      --form "Input the names for volume group, logical volume for swap and rootfs, also the size for this" \
-      15 60 0 \
-      "Volume group name (VG):"          1 1	"$_vgname" 	    1 32 18 0 \
-      "Logical volume name for swap:"    2 1	"$_lvswap" 	    2 32 18 0 \
-      "Logical volume name for rootfs:"  3 1	"$_lvrootfs" 	  3 32 18 0 \
-      "Size for LVSWAP (GB):"            4 1	"$_slvswap"   	4 32  6 0 \
-      "Size for LVROOTFS (%):"          5 1	"$_slvrootfs" 	5 32  6 0 \
-      2>&1 1>&3)
-    rv=$?
-    # Check if the user press Save button
-    if [ "$rv" = 0 ] && [ "$_lvm" -eq 1 ]; then
-      mapfile -t _map <<< "$_values"
-      set_option VGNAME "${_map[0]}"
-      set_option LVSWAP "${_map[1]}"
-      set_option LVROOTFS "${_map[2]}"
-      set_option SLVSWAP "${_map[3]}"
-      set_option SLVROOTFS "${_map[4]}"
+    # Check if user select CRYPTO_LUKS and not select LVM
+    if [ "$_crypto_luks" -eq 1 ] && [ "$_lvm" -eq 0 ]; then
       # Call function set_lvm_luks
       set_lvm_luks
     else
-      # If the user press Cancel button then eliminate all values
-      set_option VGNAME ""
-      set_option LVSWAP ""
-      set_option LVROOTFS ""
-      set_option SLVSWAP ""
-      set_option SLVROOTFS ""
+      # Open form dialog
+      exec 3>&1
+      # Store data to _values variable
+      _values=$(dialog --colors --keep-tite --no-shadow --no-mouse --ok-label "Save" \
+        --backtitle "${BOLD}${WHITE}BRGV-OS Linux installation -- https://github.com/florintanasa/brgvos-void (@@MKLIVE_VERSION@@)${RESET}" \
+        --title "Define some necessary data" \
+        --form "Input the names for volume group, logical volume for swap and rootfs, also the size for this" \
+        15 60 0 \
+        "Volume group name (VG):"          1 1	"$_vgname" 	    1 32 18 0 \
+        "Logical volume name for swap:"    2 1	"$_lvswap" 	    2 32 18 0 \
+        "Logical volume name for rootfs:"  3 1	"$_lvrootfs" 	  3 32 18 0 \
+        "Size for LVSWAP (GB):"            4 1	"$_slvswap"   	4 32  6 0 \
+        "Size for LVROOTFS (%):"           5 1	"$_slvrootfs" 	5 32  6 0 \
+      2>&1 1>&3)
+      rv=$?
+      # Check if the user press Save button
+      if [ "$rv" = 0 ] && [ "$_lvm" -eq 1 ]; then
+        mapfile -t _map <<< "$_values"
+        set_option VGNAME "${_map[0]}"
+        set_option LVSWAP "${_map[1]}"
+        set_option LVROOTFS "${_map[2]}"
+        set_option SLVSWAP "${_map[3]}"
+        set_option SLVROOTFS "${_map[4]}"
+        # Call function set_lvm_luks
+        set_lvm_luks
+      else
+        # If the user press Cancel button then eliminate all values
+        set_option VGNAME ""
+        set_option LVSWAP ""
+        set_option LVROOTFS ""
+        set_option SLVSWAP ""
+        set_option SLVROOTFS ""
+      fi
     fi
     # Close form dialog
     exec 3>&-
