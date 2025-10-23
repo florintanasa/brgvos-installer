@@ -655,6 +655,10 @@ menu_lvm_luks() {
       fi
       [ -z "$_dev" ] && return
       [ "$rv" -ne 0 ] && break
+      if [ "$_crypto_luks" -eq 1 ]; then
+        # Call function set_lvm_luks
+        set_lvm_luks
+      fi
     done
     # Delete last space
     _dev=$(echo "$_dev"|awk '{$1=$1;print}')
@@ -675,13 +679,15 @@ menu_lvm_luks() {
       2>&1 1>&3)
     rv=$?
     # Check if the user press Save button
-    if [ "$rv" = 0 ]; then
+    if [ "$rv" = 0 ] && [ "$_lvm" -eq 1 ]; then
       mapfile -t _map <<< "$_values"
       set_option VGNAME "${_map[0]}"
       set_option LVSWAP "${_map[1]}"
       set_option LVROOTFS "${_map[2]}"
       set_option SLVSWAP "${_map[3]}"
       set_option SLVROOTFS "${_map[4]}"
+      # Call function set_lvm_luks
+      set_lvm_luks
     else
       # If the user press Cancel button then eliminate all values
       set_option VGNAME ""
