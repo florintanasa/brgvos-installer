@@ -640,12 +640,13 @@ menu_lvm_luks() {
       set_option CRYPTO_LUKS "0"
     fi
   fi
-  # Inputbox is available only if LVM was selected
+  # Inputbox is available only if LVM and/or CRYPTO_LUKS was selected
   _lvm=$(get_option LVM)
-  if [ "$_lvm" -eq 1 ]; then
+  _crypto_luks=$(get_option CRYPTO_LUKS)
+  if [ "$_lvm" -eq 1 ] || [ "$_crypto_luks" -eq 1 ]; then
     while true; do
       DIALOG --ok-label "Select" --cancel-label "Done" \
-        --title " Select only one partition for physical volume" --menu "$MENULABEL" \
+        --title " Select partition(s) for physical volume" --menu "$MENULABEL" \
         ${MENUSIZE} $(show_partitions)
       rv=$?
       if [ "$rv" = 0 ]; then
