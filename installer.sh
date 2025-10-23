@@ -1527,7 +1527,14 @@ failed to create filesystem $fstype on $dev!\nCheck $LOG for errors." ${MSGBOXSI
     else
       echo "Mounting $dev on $mntpt ($fstype)..." >>"$LOG"
       mount -t "$fstype" "$dev" "$TARGETDIR" >>"$LOG" 2>&1
-      ROOTFS=$dev
+      echo "Value for DEVCRYPT is $DEVCRYPT" >>"$LOG"
+      if [ -n "$DEVCRYPT" ]; then
+          ROOTFS=$DEVCRYPT
+          echo "Is used device $DEVCRYPT and this is encrypt" >>"$LOG"
+        else
+          ROOTFS=$dev
+          echo "Is used device $ROOTFS and this is not encrypt" >>"$LOG"
+      fi
       rv=$?
       if [ "$rv" -ne 0 ]; then
         DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
