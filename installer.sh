@@ -738,15 +738,16 @@ set_lvm_luks() {
         # Check if LVM was not selected
         #if [ "$_lvm" = 0 ]; then
         # Got device encrypt
-        _devcrypt=$(for s in /sys/class/block/$(basename "$(readlink -f /dev/mapper/crypt_0)")/slaves/*; do echo "/dev/${s##*/}"; done)
-        export DEVCRYPT="${_devcrypt[0]}"
-        echo "Device $DEVCRYPT is encrypt" >>"$LOG"
+        _devcrypt+=$(for s in /sys/class/block/$(basename "$(readlink -f /dev/mapper/$_crypt_name)")/slaves/*; do echo "/dev/${s##*/}"; done)
+        _devcrypt+=" "
         #fi
     done
         # Delete last space
         _cd=$(echo "$_cd"|awk '{$1=$1;print}')
         _crypts=$(echo "$_crypts"|awk '{$1=$1;print}')
         export CRYPTS="${_crypts}"
+        export DEVCRYPT="${_devcrypt}"
+        echo "Device(s) ${DEVCRYPT} was encrypted" >>"$LOG"
   fi
 
   # Check if user choose to use LVM for devices
@@ -1542,9 +1543,9 @@ failed to create filesystem $fstype on $dev!\nCheck $LOG for errors." ${MSGBOXSI
       echo "Mounting $dev on $mntpt ($fstype)..." >>"$LOG"
       mount -t "$fstype" "$dev" "$TARGETDIR" >>"$LOG" 2>&1
       echo "Value for DEVCRYPT is $DEVCRYPT" >>"$LOG"
-      if [ -n "$DEVCRYPT" ]; then
-          ROOTFS=$DEVCRYPT
-          echo "Is used device $DEVCRYPT and this is encrypt" >>"$LOG"
+      if [ -n "${DEVCRYPT}" ]; then
+          ROOTFS="${DEVCRYPT}"
+          echo "Is used device(s) ${ROOTFS} and this/thees is/are encrypt" >>"$LOG"
         else
           ROOTFS=$dev
           echo "Is used device $ROOTFS and this is not encrypt" >>"$LOG"
