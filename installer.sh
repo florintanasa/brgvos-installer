@@ -731,17 +731,22 @@ set_lvm_luks() {
             echo -n "$PASSPHRASE" | cryptsetup luksOpen "$_device" "$_crypt_name" -d -
            _cd+="/dev/mapper/$_crypt_name "
            _cd+=" "
+           _crypts+="${_crypt_name}"
+           _crypts+=" "
            _index=$((_index + 1))  # Increment the index for the next device
         } >>"$LOG" 2>&1
         # Check if LVM was not selected
-        if [ "$_lvm" = 0 ]; then
+        #if [ "$_lvm" = 0 ]; then
         # Got device encrypt
         _devcrypt=$(for s in /sys/class/block/$(basename "$(readlink -f /dev/mapper/crypt_0)")/slaves/*; do echo "/dev/${s##*/}"; done)
         export DEVCRYPT="${_devcrypt[0]}"
         echo "Device $DEVCRYPT is encrypt" >>"$LOG"
-        fi
+        #fi
     done
+        # Delete last space
         _cd=$(echo "$_cd"|awk '{$1=$1;print}')
+        _crypts=$(echo "$_crypts"|awk '{$1=$1;print}')
+        export CRYPTS="${_crypts}"
   fi
 
   # Check if user choose to use LVM for devices
@@ -1113,7 +1118,8 @@ menu_bootloader() {
 
 # Function to set bootloader from loaded saved configure file
 set_bootloader() {
-  local dev=$(get_option BOOTLOADER) grub_args=
+  local dev _encrypt
+  dev=$(get_option BOOTLOADER) grub_args=
 
   if [ "$dev" = "none" ]; then return; fi
 
@@ -1131,7 +1137,10 @@ set_bootloader() {
     chroot $TARGETDIR dd bs=512 count=4 if=/dev/urandom of=/boot/cryptlvm.key >>$LOG 2>&1
     echo -n "$PASSPHRASE" | cryptsetup luksAddKey $ROOTFS $TARGETDIR/boot/cryptlvm.key >>$LOG 2>&1
     chroot $TARGETDIR chmod 0600 /boot/cryptlvm.key >>$LOG 2>&1
-    awk 'BEGIN{print "crypt UUID='"$CRYPT_UUID"' /boot/cryptlvm.key luks"}' >> $TARGETDIR/etc/crypttab
+    #awk 'BEGIN{print "crypt UUID='"$CRYPT_UUID"' /boot/cryptlvm.key luks"}' >> $TARGETDIR/etc/crypttab
+    for _encrypt in $CRYPTS; do
+    awk -v encrypt="$_encrypt" -v uuid="$CRYPT_UUID" 'BEGIN{print encrypt " UUID=\"" uuid "\" /boot/cryptlvm.key luks"}' >> "$TARGETDIR/etc/crypttab"
+    done
     chroot $TARGETDIR touch /etc/dracut.conf.d/10-crypt.conf >>$LOG 2>&1
     awk 'BEGIN{print "install_items+=\" /boot/cryptlvm.key /etc/crypttab \""}' >> $TARGETDIR/etc/dracut.conf.d/10-crypt.conf
     echo "Generate again initramfs because was created a key for open crypted device $ROOTFS" >>$LOG
