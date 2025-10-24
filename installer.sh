@@ -1119,8 +1119,9 @@ menu_bootloader() {
 
 # Function to set bootloader from loaded saved configure file
 set_bootloader() {
-  local dev _encrypt
+  local dev _encrypt _rootfs _bool
   dev=$(get_option BOOTLOADER) grub_args=
+  local -a luks_devices
 
   if [ "$dev" = "none" ]; then return; fi
 
@@ -1129,22 +1130,35 @@ set_bootloader() {
     grub_args="--target=$EFI_TARGET --efi-directory=/boot/efi --bootloader-id=brgvos_grub --recheck"
   fi
   echo "Running grub-install $grub_args $dev..." >>$LOG
-  # Check if root file system was crypted and add option in grub config
-  $(cryptsetup isLuks "$ROOTFS") && bool=1 || bool=0
-  echo "Check if root file system was crypted and add option in grub config" >>$LOG
+  echo "Check if root file system have minimum one device encrypt" >>$LOG
+  for _rootfs in $ROOTFS; do
+    $(cryptsetup isLuks "$_rootfs") && _bool=1 #|| _bool=0
+  if [ "$_bool" -eq 1  ];then
+    bool=1
+    echo "Detected crypted device on $_rootfs"  >>$LOG
+    luks_devices+=("$_rootfs")
+  fi
+  done
   if [ "$bool" -eq 1 ]; then
-    echo "Detected crypted device on $ROOTFS"  >>$LOG
-    CRYPT_UUID=$(blkid -s UUID -o value "$ROOTFS")
+    #CRYPT_UUID=$(blkid -s UUID -o value "$ROOTFS")
     chroot $TARGETDIR dd bs=512 count=4 if=/dev/urandom of=/boot/cryptlvm.key >>$LOG 2>&1
-    echo -n "$PASSPHRASE" | cryptsetup luksAddKey $ROOTFS $TARGETDIR/boot/cryptlvm.key >>$LOG 2>&1
-    chroot $TARGETDIR chmod 0600 /boot/cryptlvm.key >>$LOG 2>&1
+    #echo -n "$PASSPHRASE" | cryptsetup luksAddKey $ROOTFS $TARGETDIR/boot/cryptlvm.key >>$LOG 2>&1
+    #chroot $TARGETDIR chmod 0600 /boot/cryptlvm.key >>$LOG 2>&1
     #awk 'BEGIN{print "crypt UUID='"$CRYPT_UUID"' /boot/cryptlvm.key luks"}' >> $TARGETDIR/etc/crypttab
+    index=0  # Init index
     for _encrypt in $CRYPTS; do
-    awk -v encrypt="$_encrypt" -v uuid="$CRYPT_UUID" 'BEGIN{print encrypt " UUID=\"" uuid "\" /boot/cryptlvm.key luks"}' >> "$TARGETDIR/etc/crypttab"
+      CRYPT_UUID=$(blkid -s UUID -o value "${luks_devices[index]}")
+      echo "UUID - ${luks_devices[index]}" >>"$LOG"
+      awk 'BEGIN{print "'"$_encrypt"' UUID='"$CRYPT_UUID"' /boot/cryptlvm.key luks"}' >> $TARGETDIR/etc/crypttab
+      #awk -v encrypt="$_encrypt" -v uuid="$CRYPT_UUID" 'BEGIN{print encrypt " UUID=\"" uuid "\" /boot/cryptlvm.key luks"}' >> "$TARGETDIR/etc/crypttab"
+      echo "Add Passphrase for ${luks_devices[index]}" >>"$LOG"
+      echo -n "$PASSPHRASE" | cryptsetup luksAddKey "${luks_devices[index]}" $TARGETDIR/boot/cryptlvm.key >>$LOG 2>&1
+      ((index++))  # Increment index
     done
+    chroot $TARGETDIR chmod 0600 /boot/cryptlvm.key >>$LOG 2>&1
     chroot $TARGETDIR touch /etc/dracut.conf.d/10-crypt.conf >>$LOG 2>&1
     awk 'BEGIN{print "install_items+=\" /boot/cryptlvm.key /etc/crypttab \""}' >> $TARGETDIR/etc/dracut.conf.d/10-crypt.conf
-    echo "Generate again initramfs because was created a key for open crypted device $ROOTFS" >>$LOG
+    echo "Generate again initramfs because was created a key for open crypted device(s) $ROOTFS" >>$LOG
     chroot $TARGETDIR dracut --no-hostonly --force >>$LOG 2>&1
     echo "Enable cryptodisk option in grub config" >>$LOG
     chroot $TARGETDIR sed -i '$aGRUB_ENABLE_CRYPTODISK=y' /etc/default/grub >>$LOG 2>&1
@@ -1162,7 +1176,7 @@ failed to install GRUB to $dev!\nCheck $LOG for errors." ${MSGBOXSIZE}
   chroot $TARGETDIR sed -i 's+#GRUB_BACKGROUND=/usr/share/void-artwork/splash.png+GRUB_BACKGROUND=/usr/share/brgvos-artwork/splash.png+g' /etc/default/grub >>$LOG 2>&1
   chroot $TARGETDIR sed -i 's/GRUB_DISTRIBUTOR="Void"/GRUB_DISTRIBUTOR="BRGV-OS"/g' /etc/default/grub >>$LOG 2>&1
   if [ "$bool" -eq 1 ]; then
-    echo "Prepare parameters on Grub for crypted device $ROOTFS"  >>$LOG
+    echo "Prepare parameters on Grub for crypted device(s) $luks_devices[@]"  >>$LOG
     chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 rd.auto=1 cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash"/g' /etc/default/grub >>$LOG 2>&1
   else
     echo "Prepare parameters on Grub for device $ROOTFS"  >>$LOG
