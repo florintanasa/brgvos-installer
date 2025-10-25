@@ -1119,12 +1119,16 @@ menu_bootloader() {
 
 # Function to set bootloader from loaded saved configure file
 set_bootloader() {
-  local dev _encrypt _rootfs _bool
-  dev=$(get_option BOOTLOADER) grub_args=
-  local -a luks_devices
-
+  # Declare some local variables
+  local dev _encrypt _rootfs _bool bool index
+  local -a luks_devices # Declare matrices
+  # Initialise variables
+  dev=$(get_option BOOTLOADER)
+  grub_args=
+  bool=0
+  _bool=0
+  # Check if user choose an option in witch device bootloader to be installed, if not chose return
   if [ "$dev" = "none" ]; then return; fi
-
   # Check if it's an EFI system via efivars module.
   if [ -n "$EFI_SYSTEM" ]; then
     grub_args="--target=$EFI_TARGET --efi-directory=/boot/efi --bootloader-id=brgvos_grub --recheck"
