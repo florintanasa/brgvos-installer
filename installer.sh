@@ -1174,7 +1174,7 @@ set_bootloader() {
   else
     echo "Device $ROOTFS is not crypted"  >>$LOG
   fi
-  # Install grub
+  # Install the Grub and if not have success inform the user with a message dialog
   chroot $TARGETDIR grub-install $grub_args $dev >>$LOG 2>&1
   if [ $? -ne 0 ]; then
     DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
