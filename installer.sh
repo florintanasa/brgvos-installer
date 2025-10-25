@@ -1136,31 +1136,36 @@ set_bootloader() {
   echo "Running grub-install $grub_args $dev..." >>$LOG
   echo "Check if root file system have minimum one device encrypt" >>$LOG
   for _rootfs in $ROOTFS; do
-    $(cryptsetup isLuks "$_rootfs") && _bool=1 #|| _bool=0
-  if [ "$_bool" -eq 1  ];then
-    bool=1
-    echo "Detected crypted device on $_rootfs"  >>$LOG
-    luks_devices+=("$_rootfs")
-  fi
+    if cryptsetup isLuks "$_rootfs"; then
+      _bool=1
+    fi
+    # Add detected encrypted device to the matrices luks_devices
+    if [ "$_bool" -eq 1 ];then
+      bool=1
+      echo "Detected crypted device on $_rootfs"  >>$LOG
+      luks_devices+=("$_rootfs")
+    fi
   done
+  # If exist encrypted device prepare the files needed for boot with Passphrase on initramfs
   if [ "$bool" -eq 1 ]; then
-    #CRYPT_UUID=$(blkid -s UUID -o value "$ROOTFS")
+    # Create cryptlvm.key file to store Passphrase
     chroot $TARGETDIR dd bs=512 count=4 if=/dev/urandom of=/boot/cryptlvm.key >>$LOG 2>&1
-    #echo -n "$PASSPHRASE" | cryptsetup luksAddKey $ROOTFS $TARGETDIR/boot/cryptlvm.key >>$LOG 2>&1
-    #chroot $TARGETDIR chmod 0600 /boot/cryptlvm.key >>$LOG 2>&1
-    #awk 'BEGIN{print "crypt UUID='"$CRYPT_UUID"' /boot/cryptlvm.key luks"}' >> $TARGETDIR/etc/crypttab
-    index=0  # Init index
+    # Init index
+    index=0
+    # Add for every device encrypted a record in /etc/crypttab and Passphrase in cryptlvm.key
     for _encrypt in $CRYPTS; do
-      CRYPT_UUID=$(blkid -s UUID -o value "${luks_devices[index]}")
-      echo "UUID - ${luks_devices[index]}" >>"$LOG"
+      CRYPT_UUID=$(blkid -s UUID -o value "${luks_devices[index]}") # Got UUID for _encrypt device
+      echo "I founded encrypted $_encrypt from device ${luks_devices[index]} with UUID $CRYPT_UUID" >>"$LOG"
       awk 'BEGIN{print "'"$_encrypt"' UUID='"$CRYPT_UUID"' /boot/cryptlvm.key luks"}' >> $TARGETDIR/etc/crypttab
-      #awk -v encrypt="$_encrypt" -v uuid="$CRYPT_UUID" 'BEGIN{print encrypt " UUID=\"" uuid "\" /boot/cryptlvm.key luks"}' >> "$TARGETDIR/etc/crypttab"
       echo "Add Passphrase for ${luks_devices[index]}" >>"$LOG"
       echo -n "$PASSPHRASE" | cryptsetup luksAddKey "${luks_devices[index]}" $TARGETDIR/boot/cryptlvm.key >>$LOG 2>&1
       ((index++))  # Increment index
     done
+    # Change permission to only root to rw for cryptlvm.key
     chroot $TARGETDIR chmod 0600 /boot/cryptlvm.key >>$LOG 2>&1
+    # Create file 10-crypt.conf is a config for dracut
     chroot $TARGETDIR touch /etc/dracut.conf.d/10-crypt.conf >>$LOG 2>&1
+    # Add in file 10-crypt.conf information necessary for dracut
     awk 'BEGIN{print "install_items+=\" /boot/cryptlvm.key /etc/crypttab \""}' >> $TARGETDIR/etc/dracut.conf.d/10-crypt.conf
     echo "Generate again initramfs because was created a key for open crypted device(s) $ROOTFS" >>$LOG
     chroot $TARGETDIR dracut --no-hostonly --force >>$LOG 2>&1
