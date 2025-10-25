@@ -1184,16 +1184,17 @@ failed to install GRUB to $dev!\nCheck $LOG for errors." ${MSGBOXSIZE}
   echo "Preparing the Logo and name in the grub menu $TARGETDIR..." >>$LOG
   chroot $TARGETDIR sed -i 's+#GRUB_BACKGROUND=/usr/share/void-artwork/splash.png+GRUB_BACKGROUND=/usr/share/brgvos-artwork/splash.png+g' /etc/default/grub >>$LOG 2>&1
   chroot $TARGETDIR sed -i 's/GRUB_DISTRIBUTOR="Void"/GRUB_DISTRIBUTOR="BRGV-OS"/g' /etc/default/grub >>$LOG 2>&1
-  if [ "$bool" -eq 1 ]; then
-    echo "Prepare parameters on Grub for crypted device(s) $luks_devices[@]"  >>$LOG
+  if [ "$bool" -eq 1 ]; then # For encrypted device
+    echo "Prepare parameters on Grub for crypted device(s) ${luks_devices[*]}"  >>$LOG
     chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 rd.auto=1 cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash"/g' /etc/default/grub >>$LOG 2>&1
-  else
+  else # For not encrypted device
     echo "Prepare parameters on Grub for device $ROOTFS"  >>$LOG
     chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 quiet splash"/g' /etc/default/grub >>$LOG 2>&1
   fi
   chroot $TARGETDIR sed -i '$aGRUB_DISABLE_OS_PROBER=false' /etc/default/grub >>$LOG 2>&1
   echo "Running grub-mkconfig on $TARGETDIR..." >>$LOG
   chroot $TARGETDIR grub-mkconfig -o /boot/grub/grub.cfg >>$LOG 2>&1
+  # Build the Grub configure file and if not have success inform the user with a message dialog and exit from installer
   if [ $? -ne 0 ]; then
     DIALOG --msgbox "${BOLD}${RED}ERROR${RESET}: \
 failed to run grub-mkconfig!\nCheck $LOG for errors." ${MSGBOXSIZE}
