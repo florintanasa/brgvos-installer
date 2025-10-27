@@ -151,6 +151,11 @@ if [ -e /sys/firmware/efi/systab ]; then
   fi
 fi
 
+# For message with echo
+bold=$(tput bold) # Start bold text
+underline=$(tput smul) # Start underlined text
+reset=$(tput sgr0) # Turn off all attributes
+
 # Dialog colors
 BLACK="\Z0"
 RED="\Z1"
