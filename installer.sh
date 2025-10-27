@@ -1875,7 +1875,7 @@ copy_rootfs() {
 
 # Function for install packages
 install_packages() {
-  local _grub= _syspkg= _extrapkg= _kernel=
+  local _grub= _syspkg= _extrapkg= _kernel= _dracut=
 
   if [ "$(get_option BOOTLOADER)" != none ]; then
     if [ -n "$EFI_SYSTEM" ]; then
@@ -1890,8 +1890,9 @@ install_packages() {
   fi
 
   _syspkg="base-system"
-  _extrapkg="lvm2 cryptsetup"
+  _extrapkg="lvm2 cryptsetup nano"
   _kernel="linux6.12"
+  _dracut="dracut"
 
   mkdir -p $TARGETDIR/var/db/xbps/keys $TARGETDIR/usr/share
   cp -a /usr/share/xbps.d $TARGETDIR/usr/share/
@@ -1905,7 +1906,7 @@ install_packages() {
   _arch=$(xbps-uhelper arch)
 
   stdbuf -oL env XBPS_ARCH=${_arch} \
-    xbps-install  -r $TARGETDIR -SyU ${_syspkg} ${_grub} ${_kernel} ${_extrapkg} 2>&1 | \
+    xbps-install  -r $TARGETDIR -SyU ${_syspkg} ${_grub} ${_kernel} ${_dracut} ${_extrapkg} 2>&1 | \
     DIALOG --title "Installing base system packages..." \
       --programbox 24 80
   if [ $? -ne 0 ]; then
