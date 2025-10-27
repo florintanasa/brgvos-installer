@@ -1450,6 +1450,14 @@ as FAT32, mountpoint /boot/efi and at least with 100MB of size." ${MSGBOXSIZE}
 create_filesystems() {
   # Define some variables local
   local mnts dev mntpt fstype fspassno mkfs size rv uuid MKFS mem_total swap_need disk_name disk_type ROOT_UUID SWAP_UUID
+  local _lvm _crypt _vgname _lvswap _lvrootfs
+  # Initialize some local variables
+  disk_type=0
+  _lvm=$(get_option LVM)
+  _crypt=$(get_option CRYPTO_LUKS)
+  _vgname=$(get_option VGNAME)
+  _lvswap=$(get_option LVSWAP)
+  _lvrootfs=$(get_option LVROOTFS)
 
   mnts=$(grep -E '^MOUNTPOINT .*' "$CONF_FILE" | sort -k 5)
   set -- ${mnts}
