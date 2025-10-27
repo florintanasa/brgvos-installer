@@ -1726,14 +1726,87 @@ failed to mount $dev on ${mntpt}! check $LOG for errors." ${MSGBOXSIZE}
 failed to mount $dev on $mntpt! check $LOG for errors." ${MSGBOXSIZE}
       DIE
     fi
+    # Check if was mounted HDD or SSD
+    # Some part of code is not used (for LVM, LVM+LUKS) now because I have only 2 logical volume: vg0-lvbrgvos for rootfs /
+    # and vg0-lvswap for swap, but I added for future, I which to add more volume for example vgo-lvhome for /home
+    if [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 1 ]; then # For LVM on LUKS
+      echo "Am ales LVM+LUKS scot daca este rotational" >>"$LOG" # OK
+      disk_name=$(lsblk -ndo pkname $(
+        for pv in $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}' | sort -u); do
+          dm=$(basename "$(readlink -f "$pv")")
+          for s in /sys/class/block/$dm/slaves/*; do
+            echo "/dev/${s##*/}"
+          done
+        done
+      ) | sort -u)
+      echo "LVM+LUKS disk_name are valoarea $disk_name" >>"$LOG"
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      echo "LVM+LUKS _map0 are valoarea ${_map[0]}" >>"$LOG"
+      # Get element from matrices
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+      echo "disk_type are valoarea $disk_type" >>"$LOG"
+    elif [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 0 ]; then # For LVM
+      echo "Am ales LVM scot daca este rotational" >>"$LOG" # OK
+      disk_name=$(lsblk -ndo pkname $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}') | sort -u)
+      echo "LVM disk_name are valoarea $disk_name" >>"$LOG"
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      echo "LVM _map0 are valoarea ${_map[0]}" >>"$LOG"
+      # Get element from matrices
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+      echo "disk_type are valoarea $disk_type" >>"$LOG"
+    elif [ "$_crypt" -eq 1 ] && [ "$_lvm" -eq 0 ]; then # For LUKS
+      disk_name=$(lsblk -ndo pkname "$(
+        for s in /sys/class/block/"$(basename "$(readlink -f "$dev")")"/slaves/*; do
+          echo "/dev/${s##*/}"
+        done
+      )")
+      disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
+    else # For
+      echo "Altceva" >>"$LOG"
+      disk_name=$(lsblk -ndo pkname "$dev")
+      disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
+    fi
     # Add entry to target fstab
     uuid=$(blkid -o value -s UUID "$dev")
     if [ "$fstype" = "f2fs" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "xfs" ]; then
+      # Not use fsck at boot for f2fs, btrfs and xfs these have their check utility
       fspassno=0
+    elif [ "$mntpt" = "/boot/efi" ]; then
+      # Set to check fsck at boot first for /boot/efi
+      fspassno=1
     else
+      # Set to check fsck at boot second
       fspassno=2
     fi
-    echo "UUID=$uuid $mntpt $fstype defaults 0 $fspassno" >>"$TARGET_FSTAB"
+    # Prepare options for mount command for HDD or SSD, but first check if is HDD
+    if [ "$disk_type" -eq 1 ]; then # So it's HDD
+      if [ "$fstype" = "btrfs" ]; then
+        options="compress=zstd,noatime,space_cache=v2"
+      elif [ "$fstype" = "ext4" ] || [ "$fstype" = "ext3" ] || [ "$fstype" = "ext2" ]; then
+        options="defaults,noatime,nodiratime"
+      elif [ "$fstype" = "xfs" ]; then
+        options="defaults,noatime,nodiratime,user_xattr"
+      elif [ "$fstype" = "vfat" ] || [ "$fstype" = "f2fs" ]; then
+        options="defaults"
+      fi
+      echo "Options, for filesystem ${bold}$fstype${reset}, used for mount ${bold}$mntpt${reset} in fstab
+       is ${bold}$options${reset} on ${bold}HDD${reset}" >>"$LOG"
+    else # So it's SSD
+      if [ "$fstype" = "btrfs" ]; then
+        options="compress=zstd,noatime,space_cache=v2,discard=async,ssd"
+      elif [ "$fstype" = "ext4" ] || [ "$fstype" = "ext3" ] || [ "$fstype" = "ext2" ]; then
+        options="defaults,noatime,nodiratime,discard"
+      elif [ "$fstype" = "xfs" ]; then
+        options="defaults,noatime,nodiratime,discard,ssd,user_xattr"
+      elif [ "$fstype" = "vfat" ] || [ "$fstype" = "f2fs" ]; then
+        options="defaults"
+      fi
+      echo "Options, for filesystem ${bold}$fstype${reset}, used for mount ${bold}$mntpt${reset} in fstab
+       is ${bold}$options${reset} on ${bold}SDD${reset}" >>"$LOG"
+    fi
+    echo "UUID=$uuid $mntpt $fstype $options 0 $fspassno" >>"$TARGET_FSTAB"
   done
 }
 
