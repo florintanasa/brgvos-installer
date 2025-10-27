@@ -1178,7 +1178,11 @@ set_bootloader() {
     # Add in file 10-crypt.conf information necessary for dracut
     awk 'BEGIN{print "install_items+=\" /boot/cryptlvm.key /etc/crypttab \""}' >> $TARGETDIR/etc/dracut.conf.d/10-crypt.conf
     echo "Generate again initramfs because was created a key for open crypted device(s) $ROOTFS" >>$LOG
-    chroot $TARGETDIR dracut --no-hostonly --force >>$LOG 2>&1
+    if [ "$(get_option SOURCE)" = "local" ]; then
+      chroot $TARGETDIR dracut --no-hostonly --force >>$LOG 2>&1
+    else # for source = net dracut call directly not work but work xbps-reconfigure
+      chroot $TARGETDIR xbps-reconfigure -fa >>$LOG 2>&1
+    fi
     echo "Enable cryptodisk option in grub config" >>$LOG
     chroot $TARGETDIR sed -i '$aGRUB_ENABLE_CRYPTODISK=y' /etc/default/grub >>$LOG 2>&1
   else
