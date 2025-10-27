@@ -1052,8 +1052,13 @@ menu_useraccount() {
       return
     fi
   done
-
-  _groups="wheel,audio,video,floppy,lp,dialout,cdrom,optical,kvm,plugdev,users,socklog,lpadmin,bluetooth,xbuilder"
+  SOURCE_DONE="$(get_option SOURCE)"
+  # If source not set use defaults.
+  if [ "$(get_option SOURCE)" = "local" ] || [ -z "$SOURCE_DONE" ]; then
+    _groups="wheel,audio,video,floppy,lp,dialout,cdrom,optical,storage,scanner,kvm,plugdev,users,socklog,lpadmin,bluetooth,xbuilder"
+  else
+    _groups="wheel,audio,video,floppy,cdrom,optical,kvm,users,xbuilder"
+  fi
   while true; do
     _desc="Select group membership for login '$(get_option USERLOGIN)':"
     for _group in $(cat /etc/group); do
