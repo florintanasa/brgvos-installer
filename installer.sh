@@ -1600,17 +1600,76 @@ failed to mount $dev on ${mntpt}! check $LOG for errors." ${MSGBOXSIZE}
       fi
     fi
     # Check if was mounted HDD or SSD
-    disk_name=$(lsblk -ndo pkname "$dev")
-    disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
-    # Prepare options for mount command for HDD or SSD
-    if [ "$disk_type" -eq 1 ]; then
-      # options for HDD
+
+    echo "LVM are valoarea $_lvm" >>"$LOG" # OK 1
+    echo "CRYPTO_LUKS are valoarea $_crypt" >>"$LOG" #OK 1
+
+    if [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 1 ]; then # For LVM on LUKS
+      echo "Am ales LVM+LUKS scot daca este rotational" >>"$LOG" # OK
+      disk_name=$(lsblk -ndo pkname $(
+        for pv in $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}' | sort -u); do
+          dm=$(basename "$(readlink -f "$pv")")
+          for s in /sys/class/block/$dm/slaves/*; do
+            echo "/dev/${s##*/}"
+          done
+        done
+      ) | sort -u)
+      echo "LVM+LUKS disk_name are valoarea $disk_name" >>"$LOG"
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      echo "LVM+LUKS _map0 are valoarea ${_map[0]}" >>"$LOG"
+      # Get first element from matrices
+      # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+      echo "disk_type are valoarea $disk_type" >>"$LOG"
+    elif [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 0 ]; then # For LVM
+      echo "Am ales LVM scot daca este rotational" >>"$LOG" # OK
+      disk_name=$(lsblk -ndo pkname $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}') | sort -u)
+      echo "LVM disk_name are valoarea $disk_name" >>"$LOG"
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      echo "LVM _map0 are valoarea ${_map[0]}" >>"$LOG"
+      # Get first element from matrices
+      # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+      echo "disk_type are valoarea $disk_type" >>"$LOG"
+    elif [ "$_crypt" -eq 1 ] && [ "$_lvm" -eq 0 ]; then # For LUKS
+      disk_name=$(lsblk -ndo pkname "$(
+        for s in /sys/class/block/"$(basename "$(readlink -f "$dev")")"/slaves/*; do
+          echo "/dev/${s##*/}"
+        done
+      )")
+      disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
+    else # For
+      echo "Altceva" >>"$LOG"
+      disk_name=$(lsblk -ndo pkname "$dev")
+      disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
+    fi
+    # Prepare options for mount command for HDD or SSD, but first check if is HDD
+    if [ "$disk_type" -eq 1 ]; then # So it's HDD
+      if [ "$fstype" = "btrfs" ]; then
       options="compress=zstd,noatime,space_cache=v2"
-      echo "Options used for mount and fstab $options" >>"$LOG"
-    else
-      # options for SSD
-      options="compress=zstd,noatime,space_cache=v2,discard=async,ssd"
-      echo "Options used for mount and fstab $options" >>"$LOG"
+      elif [ "$fstype" = "ext4" ] || [ "$fstype" = "ext3" ] || [ "$fstype" = "ext2" ]; then
+        options="defaults,noatime,nodiratime"
+      elif [ "$fstype" = "xfs" ]; then
+        options="defaults,noatime,nodiratime,user_xattr"
+      elif [ "$fstype" = "f2fs" ]; then
+        options="defaults"
+      fi
+      echo "Options, for root filesystem ${bold}$fstype${reset}, used for mount and fstab
+       ${bold}$options${reset} on ${bold}HDD${reset}" >>"$LOG"
+    else # So it's SSD
+      if [ "$fstype" = "btrfs" ]; then
+        options="compress=zstd,noatime,space_cache=v2,discard=async,ssd"
+      elif [ "$fstype" = "ext4" ] || [ "$fstype" = "ext3" ] || [ "$fstype" = "ext2" ]; then
+        options="defaults,noatime,nodiratime,discard"
+      elif [ "$fstype" = "xfs" ]; then
+        options="defaults,noatime,nodiratime,discard,ssd,user_xattr"
+      elif [ "$fstype" = "f2fs" ]; then
+        options="defaults"
+      fi
+      echo "Options, for root filesystem ${bold}$fstype${reset}, used for mount and fstab
+       ${bold}$options${reset} on ${bold}SDD${reset}" >>"$LOG"
     fi
     # Create subvolume @, @home, @var_log, @var_lib and @snapshots
     if [ "$fstype" = "btrfs" ]; then
@@ -1628,28 +1687,14 @@ failed to mount $dev on ${mntpt}! check $LOG for errors." ${MSGBOXSIZE}
         mount -t "$fstype" -o "$options",subvol=@var_log "$dev" "$TARGETDIR"/var/log
         mount -t "$fstype" -o "$options",subvol=@var_lib "$dev" "$TARGETDIR"/var/lib
       } >>"$LOG" 2>&1
-    elif [ "$fstype" = "btrfs_lvm" ] || [ "$fstype" = "btrfs_lvm_crypt" ]; then
-      {
-        btrfs subvolume create "$TARGETDIR"/@
-        btrfs subvolume create "$TARGETDIR"/@home
-        btrfs subvolume create "$TARGETDIR"/@var_log
-        btrfs subvolume create "$TARGETDIR"/@var_lib
-        btrfs subvolume create "$TARGETDIR"/@snapshots
-        umount "$TARGETDIR"
-        mount -t btrfs -o "$options",subvol=@ /dev/mapper/vg0-brgvos "$TARGETDIR"
-        mkdir -p "$TARGETDIR"/{home,var/log,var/lib,.snapshots}
-        mount -t btrfs -o "$options",subvol=@home /dev/mapper/vg0-brgvos "$TARGETDIR"/home
-        mount -t btrfs -o "$options",subvol=@snapshots /dev/mapper/vg0-brgvos "$TARGETDIR"/.snapshots
-        mount -t btrfs -o "$options",subvol=@var_log /dev/mapper/vg0-brgvos "$TARGETDIR"/var/log
-        mount -t btrfs -o "$options",subvol=@var_lib /dev/mapper/vg0-brgvos "$TARGETDIR"/var/lib
-      } >>"$LOG" 2>&1
     fi
-    # Add entry to target fstab
+    # Add entry to target on fstab for /
     uuid=$(blkid -o value -s UUID "$dev")
-    if [ "$fstype" = "f2fs" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "btrfs_lvm" ] \
-      || [ "$fstype" = "btrfs_lvm_crypt" ] || [ "$fstype" = "xfs" ]; then
+    if [ "$fstype" = "f2fs" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "xfs" ]; then
+      # Not fsck at boot for f2fs, btrfs and xfs these have their check utility
       fspassno=0
     else
+      # Set to check fsck at boot first for this
       fspassno=1
     fi
     if [ "$fstype" = "btrfs" ]; then
@@ -1660,19 +1705,8 @@ failed to mount $dev on ${mntpt}! check $LOG for errors." ${MSGBOXSIZE}
         echo "UUID=$uuid /var/log $fstype $options,subvol=@var_log 0 $fspassno"
         echo "UUID=$uuid /var/lib $fstype $options,subvol=@var_lib 0 $fspassno"
       } >>"$TARGET_FSTAB"
-    elif [ "$fstype" = "btrfs_lvm" ] || [ "$fstype" = "btrfs_lvm_crypt" ]; then
-      ROOT_UUID=$(blkid -s UUID -o value /dev/mapper/vg0-brgvos)
-      SWAP_UUID=$(blkid -s UUID -o value /dev/mapper/vg0-swap)
-      {
-        echo "UUID=$ROOT_UUID / btrfs $options,subvol=@ 0 $fspassno"
-        echo "UUID=$ROOT_UUID /home btrfs $options,subvol=@home 0 $fspassno"
-        echo "UUID=$ROOT_UUID /.snapshots btrfs $options,subvol=@snapshots 0 $fspassno"
-        echo "UUID=$ROOT_UUID /var/log btrfs $options,subvol=@var_log 0 $fspassno"
-        echo "UUID=$ROOT_UUID /var/lib btrfs $options,subvol=@var_lib 0 $fspassno"
-        echo "UUID=$SWAP_UUID none swap defaults 0 $fspassno"
-      } >>"$TARGET_FSTAB"
     else
-      echo "UUID=$uuid $mntpt $fstype defaults 0 $fspassno" >>"$TARGET_FSTAB"
+      echo "UUID=$uuid $mntpt $fstype $options 0 $fspassno" >>"$TARGET_FSTAB"
     fi
   done
 
