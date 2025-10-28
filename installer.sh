@@ -599,18 +599,57 @@ menu_filesystems() {
   FILESYSTEMS_DONE=1
 }
 
+# Function for the list with partitions filtered by selected partitions
+show_partitions_filtered() {
+  # Define some local variables
+  local _dev filtered_list
+  _dev=$1 # function parameter
+  # Function that filters the list to remove lines matching _dev parameter
+  filtered_list=$(show_partitions | awk -v dev="$_dev" '
+  BEGIN {
+    # Separate _dev into the 'partitions' array
+    split(dev, partitions, " ")
+  }
+
+  {
+    # Check if the current line is a partition to be excluded
+    match_found = 0
+    for (i in partitions) {
+      if ($1 == partitions[i]) {
+        match_found = 1  # Mark the lines to be excluded
+        break
+      }
+    }
+
+    # If we found a match, we set the skip flag and ignore the next line too
+    if (match_found) {
+      skip = 1  # Set the flag to skip
+      next  # Jump to the next line
+    }
+
+    # Print the line in the output
+    if (!skip) {
+      print $0  # Print the current line
+    } else {
+      skip = 0  # Reset the skip flag for the next line
+    }
+  }
+')
+  # Print the filtered list
+  echo "$filtered_list"
+}
+
 # Function for menu LVM&LUKS
 menu_lvm_luks() {
   # Define some local variables
   local _desc _checklist _answers rv _lvm _dev _map _values _vgname _lvswap _lvrootfs _slvswap _slvrootfs _mem_total
-
   # Load some variables from configure file if exist else define presets
   _vgname=$(get_option VGNAME)
   _lvswap=$(get_option LVSWAP)
   _lvrootfs=$(get_option LVROOTFS)
   _slvswap=$(get_option SLVSWAP)
   _slvrootfs=$(get_option SLVROOTFS)
-
+  # Presets some variables
   [ -z "$_vgname" ] && _vgname="vg0"
   [ -z "$_lvrootfs" ] && _lvrootfs="lvbrgvos"
   [ -z "$_lvswap" ] && _lvswap="lvswap"
