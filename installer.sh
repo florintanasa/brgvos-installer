@@ -659,7 +659,6 @@ menu_lvm_luks() {
     # Calculate swap need, usually 2*RAM
     _slvswap=$((_mem_total*2))
   fi
-
   # Description for checklist box
   _desc="Select if you wish to use LVM and/or crypt partition"
   # Options for checklist box
@@ -683,7 +682,7 @@ menu_lvm_luks() {
       set_option CRYPTO_LUKS "0"
     fi
   fi
-  # Inputbox is available only if LVM and/or CRYPTO_LUKS was selected
+  # Input box is available only if LVM and/or CRYPTO_LUKS was selected
   _lvm=$(get_option LVM)
   _crypto_luks=$(get_option CRYPTO_LUKS)
   # Check if user select LVM or CRYPTO_LUKS
@@ -761,7 +760,6 @@ set_lvm_luks() {
   _lvrootfs=$(get_option LVROOTFS)
   _slvswap=$(get_option SLVSWAP)
   _slvrootfs=$(get_option SLVROOTFS)
-
   # Check if user choose to encrypt the device
   if [ "$_crypt" = 1 ]; then
       PASSPHRASE=$(get_option USERPASSWORD)
@@ -792,7 +790,6 @@ set_lvm_luks() {
         export DEVCRYPT="${_devcrypt}"
         echo "Device(s) ${DEVCRYPT} was encrypted" >>"$LOG"
   fi
-
   # Check if user choose to use LVM for devices
   if [ "$_lvm" = 1 ]; then
     {
@@ -1531,12 +1528,10 @@ create_filesystems() {
       echo "UUID=$uuid none swap defaults 0 0" >>"$TARGET_FSTAB"
       continue
     fi
-
-    if [ "$mkfs" -eq 1 ]; then
+    # Root partition
+    if [ "$mkfs" -eq 1 ]; then # Check if was marked to br formated
       case "$fstype" in
       btrfs) MKFS="mkfs.btrfs -f"; modprobe btrfs >>"$LOG" 2>&1;;
-      btrfs_lvm) MKFS="mkfs.btrfs -f"; modprobe btrfs >>"$LOG" 2>&1;;
-      btrfs_lvm_crypt) MKFS="mkfs.btrfs -f"; modprobe btrfs >>"$LOG" 2>&1;;
       ext2) MKFS="mke2fs -F"; modprobe ext2 >>"$LOG" 2>&1;;
       ext3) MKFS="mke2fs -F -j"; modprobe ext3 >>"$LOG" 2>&1;;
       ext4) MKFS="mke2fs -F -t ext4"; modprobe ext4 >>"$LOG" 2>&1;;
@@ -1675,8 +1670,7 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       echo "UUID=$uuid $mntpt $fstype $options 0 $fspassno" >>"$TARGET_FSTAB"
     fi
   done
-
-  # mount all filesystems in target rootfs
+  # Mount all filesystems in target rootfs
   mnts=$(grep -E '^MOUNTPOINT .*' "$CONF_FILE" | sort -k 5)
   set -- ${mnts}
   while [ $# -ne 0 ]; do
@@ -2113,12 +2107,13 @@ Do you want to reboot the system?" ${YESNOSIZE}
 
 # Function for menu Source
 menu_source() {
-  local src=
+  local src
+  src=
 
   DIALOG --title " Select installation source " \
-    --menu "$MENULABEL" 8 70 0 \
+    --menu "$MENULABEL" 8 80 0 \
     "Local" "Packages from ISO image" \
-    "Network" "Base system only, downloaded from official repository"
+    "Network" "Base system with kernel downloaded from official repository"
   case "$(cat $ANSWER)" in
   "Local") src="local";;
   "Network") src="net";
