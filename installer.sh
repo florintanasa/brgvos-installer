@@ -1181,7 +1181,7 @@ set_bootloader() {
   if [ -n "$EFI_SYSTEM" ]; then
     grub_args="--target=$EFI_TARGET --efi-directory=/boot/efi --bootloader-id=brgvos_grub --recheck"
   fi
-  echo "Running grub-install $grub_args $dev..." >>$LOG
+  echo "Running grub-install ${bold}$grub_args $dev${reset}..." >>$LOG
   echo "Check if root file system have minimum one device encrypt" >>$LOG
   for _rootfs in $ROOTFS; do
     if cryptsetup isLuks "$_rootfs"; then
@@ -1190,7 +1190,7 @@ set_bootloader() {
     # Add detected encrypted device to the matrices luks_devices
     if [ "$_bool" -eq 1 ];then
       bool=1
-      echo "Detected crypted device on $_rootfs"  >>$LOG
+      echo "Detected crypted device on ${bold}$_rootfs${reset}"  >>$LOG
       luks_devices+=("$_rootfs")
     fi
   done
@@ -1205,7 +1205,7 @@ set_bootloader() {
       CRYPT_UUID=$(blkid -s UUID -o value "${luks_devices[index]}") # Got UUID for _encrypt device
       echo "I founded encrypted $_encrypt from device ${luks_devices[index]} with UUID $CRYPT_UUID" >>"$LOG"
       awk 'BEGIN{print "'"$_encrypt"' UUID='"$CRYPT_UUID"' /boot/cryptlvm.key luks"}' >> $TARGETDIR/etc/crypttab
-      echo "Add Passphrase for ${luks_devices[index]}" >>"$LOG"
+      echo "Add Passphrase for ${bold}${luks_devices[index]}${reset}" >>"$LOG"
       echo -n "$PASSPHRASE" | cryptsetup luksAddKey "${luks_devices[index]}" $TARGETDIR/boot/cryptlvm.key >>$LOG 2>&1
       ((index++))  # Increment index
     done
@@ -1215,7 +1215,7 @@ set_bootloader() {
     chroot $TARGETDIR touch /etc/dracut.conf.d/10-crypt.conf >>$LOG 2>&1
     # Add in file 10-crypt.conf information necessary for dracut
     awk 'BEGIN{print "install_items+=\" /boot/cryptlvm.key /etc/crypttab \""}' >> $TARGETDIR/etc/dracut.conf.d/10-crypt.conf
-    echo "Generate again initramfs because was created a key for open crypted device(s) $ROOTFS" >>$LOG
+    echo "Generate again initramfs because was created a key for open crypted device(s) ${bold}$ROOTFS${reset}" >>$LOG
     if [ "$(get_option SOURCE)" = "local" ]; then
       chroot $TARGETDIR dracut --no-hostonly --force >>$LOG 2>&1
     else # for source = net dracut call directly not work but work xbps-reconfigure
@@ -1230,26 +1230,26 @@ set_bootloader() {
   chroot $TARGETDIR grub-install $grub_args $dev >>$LOG 2>&1
   if [ $? -ne 0 ]; then
     DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to install GRUB to $dev!\nCheck $LOG for errors." ${MSGBOXSIZE}
+    failed to install GRUB to ${BOLD}$dev${RESET}!\nCheck $LOG for errors." ${MSGBOXSIZE}
     DIE 1
   fi
-  echo "Preparing the Logo and name in the grub menu $TARGETDIR..." >>$LOG
+  echo "Preparing the Logo and name in the grub menu ${BOLD}$TARGETDIR/etc/default/grub${RESET}..." >>$LOG
   chroot $TARGETDIR sed -i 's+#GRUB_BACKGROUND=/usr/share/void-artwork/splash.png+GRUB_BACKGROUND=/usr/share/brgvos-artwork/splash.png+g' /etc/default/grub >>$LOG 2>&1
   chroot $TARGETDIR sed -i 's/GRUB_DISTRIBUTOR="Void"/GRUB_DISTRIBUTOR="BRGV-OS"/g' /etc/default/grub >>$LOG 2>&1
   if [ "$bool" -eq 1 ]; then # For encrypted device
-    echo "Prepare parameters on Grub for crypted device(s) ${luks_devices[*]}"  >>$LOG
+    echo "Prepare parameters on Grub for crypted device(s) ${bold}${luks_devices[*]}$reset"  >>$LOG
     chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 rd.auto=1 cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash"/g' /etc/default/grub >>$LOG 2>&1
   else # For not encrypted device
-    echo "Prepare parameters on Grub for device $ROOTFS"  >>$LOG
+    echo "Prepare parameters on Grub for device ${bold}$ROOTFS${reset}"  >>$LOG
     chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 quiet splash"/g' /etc/default/grub >>$LOG 2>&1
   fi
   chroot $TARGETDIR sed -i '$aGRUB_DISABLE_OS_PROBER=false' /etc/default/grub >>$LOG 2>&1
-  echo "Running grub-mkconfig on $TARGETDIR..." >>$LOG
+  echo "Running grub-mkconfig on ${bold}$TARGETDIR${reset}..." >>$LOG
   chroot $TARGETDIR grub-mkconfig -o /boot/grub/grub.cfg >>$LOG 2>&1
   # Build the Grub configure file and if not have success inform the user with a message dialog and exit from installer
   if [ $? -ne 0 ]; then
     DIALOG --msgbox "${BOLD}${RED}ERROR${RESET}: \
-failed to run grub-mkconfig!\nCheck $LOG for errors." ${MSGBOXSIZE}
+    failed to run grub-mkconfig!\nCheck $LOG for errors." ${MSGBOXSIZE}
     DIE 1
   fi
 }
@@ -1510,12 +1510,12 @@ create_filesystems() {
     # swap partitions
     if [ "$fstype" = "swap" ]; then
       swapoff "$dev" >/dev/null 2>&1
-      if [ "$mkfs" -eq 1 ]; then
+      if [ "$mkfs" -eq 1 ]; then # Check if was marked to br formated
         mkswap "$dev" >>"$LOG" 2>&1
         rv=$?
         if [ "$rv" -ne 0 ]; then
           DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to create swap on ${dev}!\ncheck $LOG for errors." ${MSGBOXSIZE}
+          failed to create swap on ${BOLD}${dev}${RESET}!\ncheck $LOG for errors." ${MSGBOXSIZE}
           DIE 1
         fi
       fi
@@ -1523,7 +1523,7 @@ failed to create swap on ${dev}!\ncheck $LOG for errors." ${MSGBOXSIZE}
       rv=$?
       if [ "$rv" -ne 0 ]; then
         DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to activate swap on $dev!\ncheck $LOG for errors." ${MSGBOXSIZE}
+        failed to activate swap on ${BOLD}$dev${RESET}!\ncheck $LOG for errors." ${MSGBOXSIZE}
         DIE 1
       fi
       # Add entry for target fstab
@@ -1582,35 +1582,33 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
           done
         done
       ) | sort -u)
-      echo "LVM+LUKS disk_name are valoarea $disk_name" >>"$LOG"
+      echo "For LVM+LUKS is used disk(s) ${bold}$disk_name${reset}" >>"$LOG"
       # Read every line from disk_name into matrices
       mapfile -t _map <<< "$disk_name"
-      echo "LVM+LUKS _map0 are valoarea ${_map[0]}" >>"$LOG"
+      echo "Do determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
       # Get first element from matrices
       # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
       disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
-      echo "disk_type are valoarea $disk_type" >>"$LOG"
     elif [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 0 ]; then # For LVM
-      echo "Am ales LVM scot daca este rotational" >>"$LOG" # OK
       disk_name=$(lsblk -ndo pkname $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}') | sort -u)
-      echo "LVM disk_name are valoarea $disk_name" >>"$LOG"
+      echo "For LVM is used disk(s) ${bold}$disk_name${reset}" >>"$LOG"
       # Read every line from disk_name into matrices
       mapfile -t _map <<< "$disk_name"
-      echo "LVM _map0 are valoarea ${_map[0]}" >>"$LOG"
+      echo "Do determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
       # Get first element from matrices
       # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
       disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
-      echo "disk_type are valoarea $disk_type" >>"$LOG"
     elif [ "$_crypt" -eq 1 ] && [ "$_lvm" -eq 0 ]; then # For LUKS
       disk_name=$(lsblk -ndo pkname "$(
         for s in /sys/class/block/"$(basename "$(readlink -f "$dev")")"/slaves/*; do
           echo "/dev/${s##*/}"
         done
       )")
+      echo "For LUKS, to determine type of disk (SSD/HDD) is used ${bold}$disk_name${reset}" >>"$LOG"
       disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
-    else # For
-      echo "Altceva" >>"$LOG"
+    else # For all over
       disk_name=$(lsblk -ndo pkname "$dev")
+      echo "To determine type of disk (SSD/HDD) is used ${bold}$disk_name${reset}" >>"$LOG"
       disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
     fi
     # Prepare options for mount command for HDD or SSD, but first check if is HDD
@@ -1686,18 +1684,22 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
     shift 6
     [ "$mntpt" = "/" ] || [ "$fstype" = "swap" ] && continue
     mkdir -p ${TARGETDIR}${mntpt}
-    echo "Mounting $dev on $mntpt ($fstype)..." >>"$LOG"
+    echo "Mounting ${bold}$dev${reset} on ${bold}$mntpt${reset} ($fstype)..." >>"$LOG"
     mount -t "$fstype" "$dev" ${TARGETDIR}${mntpt} >>"$LOG" 2>&1
     rv=$?
     if [ "$rv" -ne 0 ]; then
       DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to mount $dev on $mntpt! check $LOG for errors." ${MSGBOXSIZE}
+      failed to mount ${bold}$dev$[reset] on ${bold}$mntpt${reset}! check $LOG for errors." ${MSGBOXSIZE}
       DIE
     fi
     # Check if was mounted HDD or SSD
     # Some part of code is not used (for LVM, LVM+LUKS) now because I have only 2 logical volume: vg0-lvbrgvos for rootfs /
     # and vg0-lvswap for swap, but I added for future, I which to add more volume for example vgo-lvhome for /home
-    if [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 1 ]; then # For LVM on LUKS
+    echo "For device ${bold}$dev${reset}" >>"$LOG"
+    if [[ $dev != /dev/mapper/* ]]; then # Check if device is not listed on /dev/mapper/
+      disk_name=$(lsblk -ndo pkname "$dev")
+      disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
+    elif [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 1 ]; then # For LVM on LUKS
       echo "Am ales LVM+LUKS scot daca este rotational" >>"$LOG" # OK
       disk_name=$(lsblk -ndo pkname $(
         for pv in $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}' | sort -u); do
@@ -1707,46 +1709,41 @@ failed to mount $dev on $mntpt! check $LOG for errors." ${MSGBOXSIZE}
           done
         done
       ) | sort -u)
-      echo "LVM+LUKS disk_name are valoarea $disk_name" >>"$LOG"
+      echo "For LVM+LUKS is used disk(s) ${bold}$disk_name${reset}" >>"$LOG"
       # Read every line from disk_name into matrices
       mapfile -t _map <<< "$disk_name"
-      echo "LVM+LUKS _map0 are valoarea ${_map[0]}" >>"$LOG"
       # Get element from matrices
       disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
-      echo "disk_type are valoarea $disk_type" >>"$LOG"
+      echo "Do determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
     elif [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 0 ]; then # For LVM
-      echo "Am ales LVM scot daca este rotational" >>"$LOG" # OK
       disk_name=$(lsblk -ndo pkname $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}') | sort -u)
-      echo "LVM disk_name are valoarea $disk_name" >>"$LOG"
+      echo "For LVM is used disk(s) ${bold}$disk_name${reset}" >>"$LOG"
       # Read every line from disk_name into matrices
       mapfile -t _map <<< "$disk_name"
-      echo "LVM _map0 are valoarea ${_map[0]}" >>"$LOG"
+      echo "Do determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
       # Get element from matrices
       disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
-      echo "disk_type are valoarea $disk_type" >>"$LOG"
     elif [ "$_crypt" -eq 1 ] && [ "$_lvm" -eq 0 ]; then # For LUKS
       disk_name=$(lsblk -ndo pkname "$(
         for s in /sys/class/block/"$(basename "$(readlink -f "$dev")")"/slaves/*; do
           echo "/dev/${s##*/}"
         done
       )")
+      echo "For LUKS, to determine type of disk (SSD/HDD) is used ${bold}$disk_name${reset}" >>"$LOG"
       disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
-    else # For
-      echo "Altceva" >>"$LOG"
+    else # For all over, if exist :)
       disk_name=$(lsblk -ndo pkname "$dev")
+      echo "To determine type of disk (SSD/HDD) is used ${bold}$disk_name${reset}" >>"$LOG"
       disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
     fi
     # Add entry to target fstab
     uuid=$(blkid -o value -s UUID "$dev")
     if [ "$fstype" = "f2fs" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "xfs" ]; then
-      # Not use fsck at boot for f2fs, btrfs and xfs these have their check utility
-      fspassno=0
+      fspassno=0 # Not use fsck at boot for f2fs, btrfs and xfs these have their check utility
     elif [ "$mntpt" = "/boot/efi" ]; then
-      # Set to check fsck at boot first for /boot/efi
-      fspassno=1
+      fspassno=1 # Set to check fsck at boot this device first (to be mounted /boot/efi)
     else
-      # Set to check fsck at boot second
-      fspassno=2
+      fspassno=2 # Set to check fsck at boot after first device
     fi
     # Prepare options for mount command for HDD or SSD, but first check if is HDD
     if [ "$disk_type" -eq 1 ]; then # So it's HDD
