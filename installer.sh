@@ -536,24 +536,23 @@ show_partitions() {
 # Function to chose and set the filesystem used to format the device selected and mount point
 menu_filesystems() {
   # Define some variables local
-  local dev fstype fssize mntpoint reformat bdev ddev result
+  local dev fstype fssize mntpoint reformat bdev ddev result _dev
 
   while true; do
     DIALOG --ok-label "Change" --cancel-label "Done" \
       --title " Select the partition to edit " --menu "$MENULABEL" \
-      ${MENUSIZE} $(show_partitions)
+      ${MENUSIZE} $(show_partitions_filtered "$_dev")
     result=$?
     [ "$result" -ne 0 ] && return
 
     dev=$(cat $ANSWER)
+    _dev+=" $dev"
     DIALOG --title " Select the filesystem type for $dev " \
       --menu "$MENULABEL" ${MENUSIZE} \
       "btrfs" "Subvolume @,@home,@var_log,@var_lib,@snapshots" \
-      "btrfs_lvm" "Subvolume @,@home,@var_log,@var_lib,@snapshots" \
-      "btrfs_lvm_crypt" "Subvolume @,@home,@var_log,@var_lib,@snapshots" \
-      "ext2" "Linux ext2 (fără jurnalizare)" \
-      "ext3" "Linux ext3 (cu jurnalizare)" \
-      "ext4" "Linux ext4 (cu jurnalizare)" \
+      "ext2" "Linux ext2 (no journaling)" \
+      "ext3" "Linux ext3 (journal)" \
+      "ext4" "Linux ext4 (journal)" \
       "f2fs" "Flash-Friendly Filesystem" \
       "swap" "Linux swap" \
       "vfat" "FAT32" \
@@ -692,7 +691,7 @@ menu_lvm_luks() {
     while true; do
       DIALOG --ok-label "Select" --cancel-label "Done" --extra-button --extra-label "Abort" \
         --title " Select partition(s) for physical volume" --menu "$MENULABEL" \
-        ${MENUSIZE} $(show_partitions)
+        ${MENUSIZE} $(show_partitions_filtered "$_dev")
       rv=$?
       if [ "$rv" = 0 ]; then # Check if user press Select button
         _dev+=$(cat "$ANSWER")
