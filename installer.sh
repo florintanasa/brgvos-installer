@@ -1544,110 +1544,36 @@ failed to activate swap on $dev!\ncheck $LOG for errors." ${MSGBOXSIZE}
       vfat) MKFS="mkfs.vfat -F32"; modprobe vfat >>"$LOG" 2>&1;;
       xfs) MKFS="mkfs.xfs -f -i sparse=0"; modprobe xfs >>"$LOG" 2>&1;;
       esac
-      # Calculate total memory in GB
-      mem_total=$(free -t -g | grep -oP '\d+' | sed '10!d')
-      # Calculate swap need, usually 2*RAM
-      swap_need=$((mem_total*2))
-      swap_need+="G"
-      # Prepare LVM
-      if [ "$fstype" = "btrfs_lvm" ]; then
-        {
-          pvcreate "$dev"
-          vgcreate vg0 "$dev"
-          lvcreate --yes --name swap -L "$swap_need" vg0
-          lvcreate --yes --name brgvos -l +100%FREE vg0
-        } >>"$LOG" 2>&1
-        TITLE="Check $LOG for details ..."
-        INFOBOX "Creating filesystem btrfs on /dev/mapper/vg0-brgvos..." 8 80
-        echo "Running $MKFS -L brgvos /dev/mapper/vg0-brgvos..." >>"$LOG"
-        $MKFS -L brgvos /dev/mapper/vg0-brgvos >>"$LOG" 2>&1; rv=$?
-        if [ "$rv" -ne 0 ]; then
-          DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to create filesystem $fstype on $dev!\ncheck $LOG for errors." ${MSGBOXSIZE}
-          DIE 1
-        fi
-        TITLE="Check $LOG for details ..."
-        INFOBOX "Creating filesystem swap on /dev/mapper/vg0-swap..." 8 80
-        echo "Running $MKFS -L brgvos /dev/mapper/vg0-swap..." >>"$LOG"
-        mkswap /dev/mapper/vg0-swap >>"$LOG" 2>&1; rv=$?
-        if [ "$rv" -ne 0 ]; then
-          DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to create filesystem swap on /dev/mapper/vg0-swap!\ncheck $LOG for errors." ${MSGBOXSIZE}
-          DIE 1
-        fi
-        # Prepare LVM with Crypt
-      elif [ "$fstype" = "btrfs_lvm_crypt" ]; then
-        PASSPHRASE=$(get_option USERPASSWORD)
-        {
-          echo -n "$PASSPHRASE" | cryptsetup luksFormat --type=luks1 "$dev"
-          echo -n "$PASSPHRASE" | cryptsetup luksOpen "$dev" crypt -d -
-          pvcreate /dev/mapper/crypt
-          vgcreate vg0 /dev/mapper/crypt
-          lvcreate --yes --name swap -L "$swap_need" vg0
-          lvcreate --yes --name brgvos -l +100%FREE vg0
-        } >>"$LOG" 2>&1
-        TITLE="Check $LOG for details .."
-        INFOBOX "Creating filesystem btrfs în /dev/mapper/vg0-brgvos..." 8 80
-        echo "Running $MKFS -L brgvos /dev/mapper/vg0-brgvos..." >>"$LOG"
-        $MKFS -L brgvos /dev/mapper/vg0-brgvos >>"$LOG" 2>&1; rv=$?
-        if [ "$rv" -ne 0 ]; then
-          DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to create filesystem btrfs on /dev/mapper/vg0-brgvos!\nCheck $LOG for errors." ${MSGBOXSIZE}
-          DIE 1
-        fi
-        TITLE="Check $LOG for details ..."
-        INFOBOX "Creating filesystem swap în /dev/mapper/vg0-swap..." 8 80
-        echo "Running $MKFS -L brgvos /dev/mapper/vg0-swap..." >>"$LOG"
-        mkswap /dev/mapper/vg0-swap >>"$LOG" 2>&1; rv=$?
-        if [ "$rv" -ne 0 ]; then
-          DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to create filesystem swap on /dev/mapper/vg0-swap!\nCheck $LOG for errors." ${MSGBOXSIZE}
-          DIE 1
-        fi
-      else
-        TITLE="Check $LOG for details ..."
-        INFOBOX "Creating filesystem $fstype on $dev for $mntpt ..." 8 80
-        echo "Running $MKFS $dev..." >>"$LOG"
-        $MKFS "$dev" >>"$LOG" 2>&1; rv=$?
-        if [ "$rv" -ne 0 ]; then
-          DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to create filesystem $fstype on $dev!\nCheck $LOG for errors." ${MSGBOXSIZE}
-          DIE 1
-        fi
+      TITLE="Check $LOG for details ..."
+      INFOBOX "Creating filesystem ${BOLD}$fstype${RESET} on ${BOLD}$dev${RESET} for ${BOLD}$mntpt${RESET} ..." 8 80
+      echo "Running ${bold}$MKFS $dev${reset}..." >>"$LOG"
+      $MKFS "$dev" >>"$LOG" 2>&1; rv=$?
+      if [ "$rv" -ne 0 ]; then
+        DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
+        failed to create filesystem ${BOLD}$fstype${RESET} on ${BOLD}$dev${RESET}!\nCheck $LOG for errors." ${MSGBOXSIZE}
+        DIE 1
       fi
     fi
     # Mount rootfs the first one.
     [ "$mntpt" != "/" ] && continue
     mkdir -p "$TARGETDIR"
-    if [ "$fstype" = "btrfs_lvm" ] || [ "$fstype" = "btrfs_lvm_crypt" ]; then
-      echo "Mounting /dev/mapper/vg0-brgvos on $mntpt (btrfs)..." >>"$LOG"
-      mount /dev/mapper/vg0-brgvos "$TARGETDIR" >>"$LOG" 2>&1
-      ROOTFS=$dev
-    else
-      echo "Mounting $dev on $mntpt ($fstype)..." >>"$LOG"
+      echo "Mounting ${bold}$dev${reset} on ${bold}$mntpt${reset} (${bold}$fstype${reset})..." >>"$LOG"
       mount -t "$fstype" "$dev" "$TARGETDIR" >>"$LOG" 2>&1
-      echo "Value for DEVCRYPT is $DEVCRYPT" >>"$LOG"
       if [ -n "${DEVCRYPT}" ]; then
           ROOTFS="${DEVCRYPT}"
-          echo "Is used device(s) ${ROOTFS} and this/thees is/are encrypt" >>"$LOG"
+          echo "For rootfs is used next encrypted device(s) ${bold}${ROOTFS}${reset}" >>"$LOG"
         else
           ROOTFS=$dev
-          echo "Is used device $ROOTFS and this is not encrypt" >>"$LOG"
+          echo "For rootfs is used next encrypted device ${bold}$ROOTFS${reset}" >>"$LOG"
       fi
       rv=$?
       if [ "$rv" -ne 0 ]; then
         DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-failed to mount $dev on ${mntpt}! check $LOG for errors." ${MSGBOXSIZE}
+failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for errors." ${MSGBOXSIZE}
         DIE 1
       fi
-    fi
     # Check if was mounted HDD or SSD
-
-    echo "LVM are valoarea $_lvm" >>"$LOG" # OK 1
-    echo "CRYPTO_LUKS are valoarea $_crypt" >>"$LOG" #OK 1
-
     if [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 1 ]; then # For LVM on LUKS
-      echo "Am ales LVM+LUKS scot daca este rotational" >>"$LOG" # OK
       disk_name=$(lsblk -ndo pkname $(
         for pv in $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}' | sort -u); do
           dm=$(basename "$(readlink -f "$pv")")
