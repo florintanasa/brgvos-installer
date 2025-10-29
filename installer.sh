@@ -1525,7 +1525,7 @@ as FAT32, mountpoint /boot/efi and at least with 100MB of size." ${MSGBOXSIZE}
 create_filesystems() {
   # Define some variables local
   local mnts dev mntpt fstype fspassno mkfs size rv uuid MKFS mem_total swap_need disk_name disk_type ROOT_UUID SWAP_UUID
-  local _lvm _crypt _vgname _lvswap _lvrootfs
+  local _lvm _crypt _vgname _lvswap _lvrootfs _home
   # Initialize some local variables
   disk_type=0
   _lvm=$(get_option LVM)
@@ -1534,6 +1534,9 @@ create_filesystems() {
   _lvswap=$(get_option LVSWAP)
   _lvrootfs=$(get_option LVROOTFS)
 
+  # Check if is defined mount device for /home
+  [ -n "$(grep -E '/home .*' /tmp/.brgvos-installer.conf)" ] && _home=1 || _home=0
+  # Output all defined MOUNTPOINT from configure file
   mnts=$(grep -E '^MOUNTPOINT .*' "$CONF_FILE" | sort -k 5)
   set -- ${mnts}
   while [ $# -ne 0 ]; do
@@ -1668,18 +1671,22 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       echo "Options, for root filesystem ${bold}$fstype${reset}, used for mount and fstab
        ${bold}$options${reset} on ${bold}SSD${reset}" >>"$LOG"
     fi
-    # Create subvolume @, @home, @var_log, @var_lib and @snapshots
+    # Create subvolume @, @home, @var_log, @var_lib and @snapshots for lvbrgvos
     if [ "$fstype" = "btrfs" ]; then
       {
         btrfs subvolume create "$TARGETDIR"/@
-        btrfs subvolume create "$TARGETDIR"/@home
+        if [ "$_home" -eq 0 ]; then # If is not defined other mount point for /home, make subvolume @home on /
+          btrfs subvolume create "$TARGETDIR"/@home
+        fi
         btrfs subvolume create "$TARGETDIR"/@var_log
         btrfs subvolume create "$TARGETDIR"/@var_lib
         btrfs subvolume create "$TARGETDIR"/@snapshots
         umount "$TARGETDIR"
         mount -t "$fstype" -o "$options",subvol=@ "$dev" "$TARGETDIR"
         mkdir -p "$TARGETDIR"/{home,var/log,var/lib,.snapshots}
-        mount -t "$fstype" -o "$options",subvol=@home "$dev" "$TARGETDIR"/home
+        if [ "$_home" -eq 0 ]; then # If is not defined other mount point for /home, mount subvolume @home /home now
+          mount -t "$fstype" -o "$options",subvol=@home "$dev" "$TARGETDIR"/home
+        fi
         mount -t "$fstype" -o "$options",subvol=@snapshots "$dev" "$TARGETDIR"/.snapshots
         mount -t "$fstype" -o "$options",subvol=@var_log "$dev" "$TARGETDIR"/var/log
         mount -t "$fstype" -o "$options",subvol=@var_lib "$dev" "$TARGETDIR"/var/lib
@@ -1697,7 +1704,9 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
     if [ "$fstype" = "btrfs" ]; then
       {
         echo "UUID=$uuid / $fstype $options,subvol=@ 0 $fspassno"
-        echo "UUID=$uuid /home $fstype $options,subvol=@home 0 $fspassno"
+        if [ "$_home" -eq 0 ]; then # If is not defined other mount point for /home, add entry now in fstab
+          echo "UUID=$uuid /home $fstype $options,subvol=@home 0 $fspassno"
+        fi
         echo "UUID=$uuid /.snapshots $fstype $options,subvol=@snapshots 0 $fspassno"
         echo "UUID=$uuid /var/log $fstype $options,subvol=@var_log 0 $fspassno"
         echo "UUID=$uuid /var/lib $fstype $options,subvol=@var_lib 0 $fspassno"
@@ -1800,7 +1809,23 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       echo "Options, for filesystem ${bold}$fstype${reset}, used for mount ${bold}$mntpt${reset} in fstab
        is ${bold}$options${reset} on ${bold}SSD${reset}" >>"$LOG"
     fi
-    echo "UUID=$uuid $mntpt $fstype $options 0 $fspassno" >>"$TARGET_FSTAB"
+    # Create subvolume @home and mount in /home
+    if [ "$fstype" = "btrfs" ] && [ "$mntpt" = "/home" ]; then
+      {
+        echo "Running ${bold}btrfs subvolume create ${TARGETDIR}${mntpt}/@home${reset}"
+        btrfs subvolume create ${TARGETDIR}${mntpt}/@home
+        echo "Unmounting ${bold}$dev${reset} on ${bold}$mntpt${reset} ($fstype)..."
+        umount ${TARGETDIR}${mntpt}
+        echo "Mounting ${bold}$dev${reset} on ${bold}$mntpt${reset} add to option ${bold}subvol=@home${reset} ..."
+        mount -t "$fstype" -o "$options",subvol=@home "$dev" ${TARGETDIR}${mntpt}
+      } >>"$LOG" 2>&1
+    fi
+    # Add entry on fstab
+    if [ "$fstype" = "btrfs" ] && [ "$mntpt" = "/home" ]; then
+      echo "UUID=$uuid $mntpt $fstype $options,subvol=@home 0 $fspassno" >>"$TARGET_FSTAB"
+    else
+      echo "UUID=$uuid $mntpt $fstype $options 0 $fspassno" >>"$TARGET_FSTAB"
+    fi
   done
 }
 
