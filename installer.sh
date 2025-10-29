@@ -1234,7 +1234,7 @@ set_bootloader() {
   chroot $TARGETDIR sed -i 's+#GRUB_BACKGROUND=/usr/share/void-artwork/splash.png+GRUB_BACKGROUND=/usr/share/brgvos-artwork/splash.png+g' /etc/default/grub >>$LOG 2>&1
   chroot $TARGETDIR sed -i 's/GRUB_DISTRIBUTOR="Void"/GRUB_DISTRIBUTOR="BRGV-OS"/g' /etc/default/grub >>$LOG 2>&1
   if [ "$bool" -eq 1 ]; then # For encrypted device
-    echo "Prepare parameters on Grub for crypted device(s) ${bold}${luks_devices[*]}$reset"  >>$LOG
+    echo "Prepare parameters on Grub for crypted device(s) ${bold}${luks_devices[*]}${reset}"  >>$LOG
     chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 rd.auto=1 cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash"/g' /etc/default/grub >>$LOG 2>&1
   else # For not encrypted device
     echo "Prepare parameters on Grub for device ${bold}$ROOTFS${reset}"  >>$LOG
@@ -1630,7 +1630,7 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
         options="defaults"
       fi
       echo "Options, for root filesystem ${bold}$fstype${reset}, used for mount and fstab
-       ${bold}$options${reset} on ${bold}SDD${reset}" >>"$LOG"
+       ${bold}$options${reset} on ${bold}SSD${reset}" >>"$LOG"
     fi
     # Create subvolume @, @home, @var_log, @var_lib and @snapshots
     if [ "$fstype" = "btrfs" ]; then
@@ -1683,7 +1683,7 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
     rv=$?
     if [ "$rv" -ne 0 ]; then
       DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
-      failed to mount ${bold}$dev$[reset] on ${bold}$mntpt${reset}! check $LOG for errors." ${MSGBOXSIZE}
+      failed to mount ${BOLD}$dev${RESET} on ${BOLD}$mntpt${RESET}! check $LOG for errors." ${MSGBOXSIZE}
       DIE
     fi
     # Check if was mounted HDD or SSD
@@ -1763,7 +1763,7 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
         options="defaults"
       fi
       echo "Options, for filesystem ${bold}$fstype${reset}, used for mount ${bold}$mntpt${reset} in fstab
-       is ${bold}$options${reset} on ${bold}SDD${reset}" >>"$LOG"
+       is ${bold}$options${reset} on ${bold}SSD${reset}" >>"$LOG"
     fi
     echo "UUID=$uuid $mntpt $fstype $options 0 $fspassno" >>"$TARGET_FSTAB"
   done
