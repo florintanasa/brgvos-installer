@@ -826,6 +826,7 @@ set_lvm_luks() {
       _PE_Size=$(vgdisplay $_vgname | grep "PE Size" | awk '{print int($3)}')
       echo "_FREE_PE=$_FREE_PE"
       echo "_PE_Size=$_PE_Size"
+      _FREE_PE=$((_FREE_PE-2)) # subtract 2 units, it is possible to give an error for 100% (rounded to the whole number)
       if [ "$_slvhome" -gt 0 ] ; then # If user enter a size for home logical volume
          # Convert _slvhome from percent to MB
         _slvhome_MB=$(((_FREE_PE*_PE_Size*_slvhome)/100))
