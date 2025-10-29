@@ -641,18 +641,23 @@ show_partitions_filtered() {
 # Function for menu LVM&LUKS
 menu_lvm_luks() {
   # Define some local variables
-  local _desc _checklist _answers rv _lvm _dev _map _values _vgname _lvswap _lvrootfs _slvswap _slvrootfs _mem_total
+  local _desc _checklist _answers rv _lvm _dev _map _values _mem_total
+  local _vgname _lvswap _lvrootfs _lvhome _slvswap _slvrootfs _slvhome
   # Load some variables from configure file if exist else define presets
   _vgname=$(get_option VGNAME)
   _lvswap=$(get_option LVSWAP)
   _lvrootfs=$(get_option LVROOTFS)
+  _lvhome=$(get_option LVHOME)
   _slvswap=$(get_option SLVSWAP)
   _slvrootfs=$(get_option SLVROOTFS)
+  _slvhome=$(get_option SLVHOME)
   # Presets some variables
   [ -z "$_vgname" ] && _vgname="vg0"
-  [ -z "$_lvrootfs" ] && _lvrootfs="lvbrgvos"
   [ -z "$_lvswap" ] && _lvswap="lvswap"
-  [ -z "$_slvrootfs" ] && _slvrootfs="100"
+  [ -z "$_lvrootfs" ] && _lvrootfs="lvbrgvos"
+  [ -z "$_lvhome" ] && _lvhome="lvhome"
+  [ -z "$_slvrootfs" ] && _slvrootfs="30"
+  [ -z "$_slvhome" ] && _slvhome="70"
   if [ -z "$_slvswap" ]; then
     # Calculate total memory in GB
     _mem_total=$(free -t -g | grep -oP '\d+' | sed '10!d')
@@ -720,8 +725,10 @@ menu_lvm_luks() {
         "Volume group name (VG):"          1 1	"$_vgname" 	    1 32 18 0 \
         "Logical volume name for swap:"    2 1	"$_lvswap" 	    2 32 18 0 \
         "Logical volume name for rootfs:"  3 1	"$_lvrootfs" 	  3 32 18 0 \
-        "Size for LVSWAP (GB):"            4 1	"$_slvswap"   	4 32  6 0 \
-        "Size for LVROOTFS (%):"           5 1	"$_slvrootfs" 	5 32  6 0 \
+        "Logical volume name for home:"    4 1	"$_lvhome" 	    4 32 18 0 \
+        "Size for LVSWAP (GB):"            5 1	"$_slvswap"   	5 32  6 0 \
+        "Size for LVROOTFS (%):"           6 1	"$_slvrootfs" 	6 32  6 0 \
+        "Size for LVHOME (%):"             7 1	"$_slvhome" 	  7 32  6 0 \
       2>&1 1>&3)
       rv=$?
       # Check if the user press Save button
@@ -730,8 +737,10 @@ menu_lvm_luks() {
         set_option VGNAME "${_map[0]}"
         set_option LVSWAP "${_map[1]}"
         set_option LVROOTFS "${_map[2]}"
-        set_option SLVSWAP "${_map[3]}"
-        set_option SLVROOTFS "${_map[4]}"
+        set_option LVHOME "${_map[3]}"
+        set_option SLVSWAP "${_map[4]}"
+        set_option SLVROOTFS "${_map[5]}"
+        set_option SLVHOME "${_map[6]}"
         # Call function set_lvm_luks
         set_lvm_luks
       else
@@ -739,8 +748,10 @@ menu_lvm_luks() {
         set_option VGNAME ""
         set_option LVSWAP ""
         set_option LVROOTFS ""
+        set_option LVHOME ""
         set_option SLVSWAP ""
         set_option SLVROOTFS ""
+        set_option SLVHOME ""
       fi
     fi
     # Close form dialog
@@ -750,7 +761,8 @@ menu_lvm_luks() {
 }
 
 set_lvm_luks() {
-  local _pv _vgname _lvm _lvswap _lvrootfs _slvswap _slvrootfs _crypt _device _crypt_name _index _cd _devcrypt
+  local _pv _vgname _lvm _lvswap _lvrootfs _lvhome _slvswap _slvrootfs _slvhome _crypt _device _crypt_name _index _cd
+  local  _devcrypt _FREE_PE _PE_Size _slvrootfs_MB _slvhome_MB
   # Load variables from configure file if exist else define presets
   _pv=$(get_option PV)
   _lvm=$(get_option LVM)
@@ -758,8 +770,10 @@ set_lvm_luks() {
   _vgname=$(get_option VGNAME)
   _lvswap=$(get_option LVSWAP)
   _lvrootfs=$(get_option LVROOTFS)
+  _lvhome=$(get_option LVHOME)
   _slvswap=$(get_option SLVSWAP)
   _slvrootfs=$(get_option SLVROOTFS)
+  _slvhome=$(get_option SLVHOME)
   # Check if user choose to encrypt the device
   if [ "$_crypt" = 1 ]; then
       PASSPHRASE=$(get_option USERPASSWORD)
@@ -804,11 +818,28 @@ set_lvm_luks() {
         set -- $_cd; vgcreate "$_vgname" "$@" # Create volume group
       fi
       # Create logical volume for swap and rootfs
-      if [ "$_slvswap" -gt 0 ]; then #
+      if [ "$_slvswap" -gt 0 ]; then # If user enter a size for swap logical volume create this lvswap
         lvcreate --yes --name "$_lvswap" -L "$_slvswap"G "$_vgname"
       fi
-      if [ "$_slvrootfs" -gt 0 ]; then
+      # Calculate some variables needed for _slvrootfs and _slvhome
+      _FREE_PE=$(vgdisplay $_vgname | grep "Free  PE" | awk '{print $5}')
+      _PE_Size=$(vgdisplay $_vgname | grep "PE Size" | awk '{print int($3)}')
+      echo "_FREE_PE=$_FREE_PE"
+      echo "_PE_Size=$_PE_Size"
+      if [ "$_slvhome" -gt 0 ] ; then # If user enter a size for home logical volume
+         # Convert _slvhome from percent to MB
+        _slvhome_MB=$(((_FREE_PE*_PE_Size*_slvhome)/100))
+        lvcreate --yes --name "$_lvhome" -L "$_slvhome_MB"M "$_vgname"
+        echo "_slvhome_MB=$_slvhome_MB"
+      fi
+      if [ "$_slvhome" -eq 0 ] ; then # If user not enter a size for home logical volume make lvrootfs xxx% from Free
         lvcreate --yes --name "$_lvrootfs" -l +"$_slvrootfs"%FREE "$_vgname"
+        echo "cucu"
+      elif [ "$_slvrootfs" -gt 0 ]; then # If user enter a size for rootfs logical volume create this lvrootfs
+        # Convert _slvrootfs from percent to MB
+        _slvrootfs_MB=$(((_FREE_PE*_PE_Size*_slvrootfs)/100))
+        lvcreate --yes --name "$_lvrootfs" -L "$_slvrootfs_MB"M "$_vgname"
+        echo "_slvrootfs_MB=$_slvrootfs_MB"
       fi
     } >>"$LOG" 2>&1
   fi
