@@ -804,8 +804,12 @@ set_lvm_luks() {
         set -- $_cd; vgcreate "$_vgname" "$@" # Create volume group
       fi
       # Create logical volume for swap and rootfs
-      lvcreate --yes --name "$_lvswap" -L "$_slvswap"G "$_vgname"
-      lvcreate --yes --name "$_lvrootfs" -l +"$_slvrootfs"%FREE "$_vgname"
+      if [ "$_slvswap" -gt 0 ]; then #
+        lvcreate --yes --name "$_lvswap" -L "$_slvswap"G "$_vgname"
+      fi
+      if [ "$_slvrootfs" -gt 0 ]; then
+        lvcreate --yes --name "$_lvrootfs" -l +"$_slvrootfs"%FREE "$_vgname"
+      fi
     } >>"$LOG" 2>&1
   fi
 }
