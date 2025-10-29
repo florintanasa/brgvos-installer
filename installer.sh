@@ -1542,7 +1542,7 @@ create_filesystems() {
     # swap partitions
     if [ "$fstype" = "swap" ]; then
       swapoff "$dev" >/dev/null 2>&1
-      if [ "$mkfs" -eq 1 ]; then # Check if was marked to br formated
+      if [ "$mkfs" -eq 1 ]; then # Check if was marked to be formated
         mkswap "$dev" >>"$LOG" 2>&1
         rv=$?
         if [ "$rv" -ne 0 ]; then
@@ -1551,7 +1551,7 @@ create_filesystems() {
           DIE 1
         fi
       fi
-      swapon "$dev" >>"$LOG" 2>&1
+      swapon "$dev" >>"$LOG" 2>&1 # activate swap
       rv=$?
       if [ "$rv" -ne 0 ]; then
         DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
@@ -1564,7 +1564,7 @@ create_filesystems() {
       continue
     fi
     # Root partition
-    if [ "$mkfs" -eq 1 ]; then # Check if was marked to br formated
+    if [ "$mkfs" -eq 1 ]; then # Check if was marked to be formated
       case "$fstype" in
       btrfs) MKFS="mkfs.btrfs -f"; modprobe btrfs >>"$LOG" 2>&1;;
       ext2) MKFS="mke2fs -F"; modprobe ext2 >>"$LOG" 2>&1;;
@@ -1729,7 +1729,6 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       disk_name=$(lsblk -ndo pkname "$dev")
       disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
     elif [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 1 ]; then # For LVM on LUKS
-      echo "Am ales LVM+LUKS scot daca este rotational" >>"$LOG" # OK
       disk_name=$(lsblk -ndo pkname $(
         for pv in $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}' | sort -u); do
           dm=$(basename "$(readlink -f "$pv")")
