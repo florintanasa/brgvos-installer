@@ -1178,7 +1178,6 @@ set_bootloader() {
   if [ -n "$EFI_SYSTEM" ]; then
     grub_args="--target=$EFI_TARGET --efi-directory=/boot/efi --bootloader-id=brgvos_grub --recheck"
   fi
-  echo "Running grub-install ${bold}$grub_args $dev${reset}..." >>$LOG
   echo "Check if root file system have minimum one device encrypt" >>$LOG
   for _rootfs in $ROOTFS; do
     if cryptsetup isLuks "$_rootfs"; then
@@ -1224,6 +1223,7 @@ set_bootloader() {
     echo "Device $ROOTFS is not crypted"  >>$LOG
   fi
   # Install the Grub and if not have success inform the user with a message dialog
+  echo "Running ${bold}grub-install $grub_args $dev${reset}..." >>$LOG
   chroot $TARGETDIR grub-install $grub_args $dev >>$LOG 2>&1
   if [ $? -ne 0 ]; then
     DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
