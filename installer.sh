@@ -1265,7 +1265,7 @@ set_bootloader() {
     failed to install GRUB to ${BOLD}$dev${RESET}!\nCheck $LOG for errors." ${MSGBOXSIZE}
     DIE 1
   fi
-  echo "Preparing the Logo and name in the grub menu ${BOLD}$TARGETDIR/etc/default/grub${RESET}..." >>$LOG
+  echo "Preparing the Logo and name in the grub menu ${bold}$TARGETDIR/etc/default/grub${reset}..." >>$LOG
   chroot $TARGETDIR sed -i 's+#GRUB_BACKGROUND=/usr/share/void-artwork/splash.png+GRUB_BACKGROUND=/usr/share/brgvos-artwork/splash.png+g' /etc/default/grub >>$LOG 2>&1
   chroot $TARGETDIR sed -i 's/GRUB_DISTRIBUTOR="Void"/GRUB_DISTRIBUTOR="BRGV-OS"/g' /etc/default/grub >>$LOG 2>&1
   if [ "$bool" -eq 1 ]; then # For encrypted device
