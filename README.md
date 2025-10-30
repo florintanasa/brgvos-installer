@@ -2,7 +2,7 @@
 BRGV-OS Linux installer implemented in GNU Bash.  
 [BRGV-OS](https://github.com/florintanasa/brgvos-void) is a spin Void Linux distribution.  
 
-The brgvos-installer installer is a spin of the Void Linux installer to which we have made some changes and added new
+The brgvos-installer installer is a spin of the Void Linux installer to which have made some changes and added new
 features.  
 
 Its main function is to install the BRGV-OS live system, located on the CD, as well as to install a minimal functional
