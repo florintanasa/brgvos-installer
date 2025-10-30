@@ -131,7 +131,7 @@ ANSWER=$(mktemp -t vinstall-XXXXXXXX || exit 1)
 TARGET_SERVICES=$(mktemp -t vinstall-sv-XXXXXXXX || exit 1)
 TARGET_FSTAB=$(mktemp -t vinstall-fstab-XXXXXXXX || exit 1)
 
-# Exit clean from script installer.sh
+# Exit clean from script brgvos-installer.sh
 # Call function "DIE" when installer.sn catch INT (Ctrl+C) TERM (terminate request) or QUIT (Ctrl+\)
 trap "DIE" INT TERM QUIT
 
