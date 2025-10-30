@@ -5,7 +5,7 @@ BRGV-OS Linux installer implemented in GNU Bash.
 The brgvos-installer installer is a spin of the [Void Linux installer](https://github.com/void-linux/void-mklive) to which have made some changes and added new
 features.  
 
-Its main function is to install the BRGV-OS live system, located on the CD, as well as to install a minimal functional
+The main function is to install the BRGV-OS live system, located on the CD, as well as to install a minimal functional
 system (base system) of Void Linux together with kernel6.12.
 
 |                       Source menu                       |                      Source options menu                       |
