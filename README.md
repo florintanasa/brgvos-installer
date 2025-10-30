@@ -18,7 +18,14 @@ The installer provides the following installation modes:
 * LVM installation;
 * Classic partitioned installation.
 
+|                                   LVM&LUKS menu                                   |                             LVM&LUKS options                             |
+|:---------------------------------------------------------------------------------:|:------------------------------------------------------------------------:|
+|        ![LVM&LUKS menu](./screenshots/brgvos-installer-LVM_LUKS_menu.png)         | ![LVM&LUKS options](./screenshots/brgvos-installer-LVM_LUKS_options.png) |
 
+
+|                               LVM select partition                                |                            Define LVM data                             |
+|:---------------------------------------------------------------------------------:|:----------------------------------------------------------------------:|
+| ![LVM select partition](./screenshots/brgvos-installer-LVM_select_partititon.png) | ![Define LVM data](./screenshots/brgvos-installer-LVM_define_data.png) |
 ## 
 
 Is usable (was tested with BRGV-OS live image), with attention, I will back soon with more info...
