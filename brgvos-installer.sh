@@ -760,6 +760,7 @@ menu_lvm_luks() {
   #set_lvm_luks
 }
 
+# Function to create lvm and/or luks with loaded parameters from saved configure file
 set_lvm_luks() {
   local _pv _vgname _lvm _lvswap _lvrootfs _lvhome _slvswap _slvrootfs _slvhome _crypt _device _crypt_name _index _cd
   local  _devcrypt _FREE_PE _PE_Size _slvrootfs_MB _slvhome_MB
@@ -817,7 +818,7 @@ set_lvm_luks() {
         set -- $_cd; pvcreate "$@" # Create physical volume
         set -- $_cd; vgcreate "$_vgname" "$@" # Create volume group
       fi
-      # Create logical volume for swap and rootfs
+      # Create logical volume for swap, home and rootfs
       if [ "$_slvswap" -gt 0 ]; then # If user enter a size for swap logical volume create this lvswap
         lvcreate --yes --name "$_lvswap" -L "$_slvswap"G "$_vgname"
       fi
