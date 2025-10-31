@@ -13,10 +13,11 @@ system (base system) of Void Linux together with kernel6.12.
 | ![Main menu](./screenshots/brgvos-installer-Source.png) | ![Source menu](./screenshots/brgvos-installer-Source_menu.png) |
 
 The installer provides the following installation modes:
+* LVM installation; 
 * Full encrypted installation;
-* LVM and full encrypted installation;
-* LVM installation;
-* Classic partitioned installation.
+* LVM with full encrypted installation;
+* Classic partitioned installation;
+* Combinations from these.
 
 |                                   LVM&LUKS menu                                   |                             LVM&LUKS options                             |
 |:---------------------------------------------------------------------------------:|:------------------------------------------------------------------------:|
@@ -28,5 +29,9 @@ The installer provides the following installation modes:
 | ![LVM select partition](./screenshots/brgvos-installer-LVM_select_partititon.png) | ![Define LVM data](./screenshots/brgvos-installer-LVM_define_data.png) |
 ## 
 
+> [!WARNING]  
+> To make partitions on used disks is better to use `fdisk` utility, `cfdisk` is easier but not delete signature 
+> for LVM & LUKS if exist from over installation. 
+  
 Is usable (was tested with BRGV-OS live image), with attention, I will back soon with more info...
 # Work is in progress...
