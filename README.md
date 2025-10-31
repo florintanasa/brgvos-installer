@@ -117,21 +117,21 @@ all the spaces are allocated in percentages to `LVROOTFS`.
 ## Video examples
 Because an image say more like 1000 words, next is some video examples, so this make many, many words :)  
 
-| BRGV-OS install on LVM in HDD |                                                                                                                                      |
-|:-----------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
-|                               | [<img src="https://img.youtube.com/vi/8uVmGKrpThI/maxresdefault.jpg"/>](https://www.youtube.com/embed/8uVmGKrpThI?autoplay=1&mute=1) |
+| BRGV-OS install on LVM in HDD                                                                                                 |                                                                                                                                      |
+|:------------------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------:|
+| Source: `Local`</br>LVM&LUKS: `LVM`</br>LVSWAP (GB): `14`</br>LVROTFS (%): `30`</br>LVHOME (%): `70`</br>Filesystems: `btrfs` | [<img src="https://img.youtube.com/vi/8uVmGKrpThI/maxresdefault.jpg"/>](https://www.youtube.com/embed/8uVmGKrpThI?autoplay=1&mute=1) |
 
-| BRGV-OS install in SSD encrypted and LVM |                                                                                                                                      |
-|:----------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
-|                                          | [<img src="https://img.youtube.com/vi/bk30gESYeJU/maxresdefault.jpg"/>](https://www.youtube.com/embed/bk30gESYeJU?autoplay=1&mute=1) |
+|                                               BRGV-OS install in SSD encrypted and LVM                                               |                                                                                                                                      |
+|:------------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
+| Source: `Local`</br>LVM&LUKS: `LVM`+`LUKS`</br>LVSWAP (GB): `14`</br>LVROTFS (%): `30`</br>LVHOME (%): `60`</br>Filesystems: `btrfs` | [<img src="https://img.youtube.com/vi/bk30gESYeJU/maxresdefault.jpg"/>](https://www.youtube.com/embed/bk30gESYeJU?autoplay=1&mute=1) |
 
-| BRGV-OS install on tty console in SSD and HDD |                                                                                                                                      |
-|:---------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
-|                                               | [<img src="https://img.youtube.com/vi/dD8Q4JN7lYw/maxresdefault.jpg"/>](https://www.youtube.com/embed/dD8Q4JN7lYw?autoplay=1&mute=1) |
+|      BRGV-OS install on tty console in SSD and HDD       |                                                                                                                                      |
+|:--------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
+| Source: `Local`</br>LVM&LUKS: `NO`</br>Filesystems: `ext4` | [<img src="https://img.youtube.com/vi/dD8Q4JN7lYw/maxresdefault.jpg"/>](https://www.youtube.com/embed/dD8Q4JN7lYw?autoplay=1&mute=1) |
 
-| Void Linux install with brgvos-installer on LVM |                                                                                                                                      |
-|:-----------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
-|                                                 | [<img src="https://img.youtube.com/vi/x9IMfU4ZXuw/maxresdefault.jpg"/>](https://www.youtube.com/embed/x9IMfU4ZXuw?autoplay=1&mute=1) |
+|                                        Void Linux install with brgvos-installer on LVM                                         |                                                                                                                                      |
+|:------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
+| Source: `Network`</br>LVM&LUKS: `LVM`</br>LVSWAP (GB): `0`</br>LVROTFS (%): `30`</br>LVHOME (%): `70`</br>Filesystems: `btrfs` | [<img src="https://img.youtube.com/vi/x9IMfU4ZXuw/maxresdefault.jpg"/>](https://www.youtube.com/embed/x9IMfU4ZXuw?autoplay=1&mute=1) |
 
 Is usable (was tested with BRGV-OS live image), with attention, I will back soon with more info...
 # Work is in progress...
