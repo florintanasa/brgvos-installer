@@ -35,6 +35,7 @@
       <w>loglevel</w>
       <w>lpadmin</w>
       <w>lvbrgvos</w>
+      <w>lvhome</w>
       <w>lvname</w>
       <w>lvrootfs</w>
       <w>lvswap</w>
@@ -71,6 +72,7 @@
       <w>secondpass</w>
       <w>sectorsize</w>
       <w>skel</w>
+      <w>slvhome</w>
       <w>slvrootfs</w>
       <w>slvswap</w>
       <w>socklog</w>
