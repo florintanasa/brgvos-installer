@@ -92,7 +92,7 @@ Usually we use in calculus (integer) the size of the disks in GB (is "commercial
 But in algorithm is used `FREE PE` (**P**hysical **E**xtent) an this have typically **4MB**, so for a disk we have:  
 (250/4)*1024=64000 `FREE PE` (consider disk unused).  
 
-> ![IMPORTANT]  
+> [!IMPORTANT]  
 > From Free PE, after is created `lvswap`, subtract 2 units to have a safety marje
 
 | SSD_1 | SSD_2 | Total VG | LVSWAP | FREE SPACE | LVHOME | LVROOTFS |
