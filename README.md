@@ -33,7 +33,7 @@ The installer provides the following installation modes:
 > To make partitions on used disks is better to use `fdisk` utility, `cfdisk` is easier but not delete signatures 
 > for LVM & LUKS if exist from over installation. 
   
-## Define LVM data
+## Option menu Define LVM data
 To explain the parameters from `Define some necessary data` form:  
 1. Volume group name (VG): - is the name for volume group, have default value `vg0`;
 2. Logical volume name for swap: - is the name for the logical volume use for swap , have default value `lvswap`;
