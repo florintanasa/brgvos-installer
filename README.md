@@ -46,7 +46,7 @@ To explain the parameters from `Define some necessary data` form:
 For the **names** is possible to use any alphanumeric characters and `-`, without special characters and space.
 For the **size** we look on next algorithm used in script:
 ```bash
-# Create logical volume for swap and rootfs
+# Create logical volume for swap, home and rootfs
       if [ "$_slvswap" -gt 0 ]; then # If user enter a size for swap logical volume create this lvswap
         lvcreate --yes --name "$_lvswap" -L "$_slvswap"G "$_vgname"
       fi
