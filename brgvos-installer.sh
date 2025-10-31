@@ -835,7 +835,6 @@ set_lvm_luks() {
       fi
       if [ "$_slvhome" -eq 0 ] ; then # If user not enter a size for home logical volume make lvrootfs xxx% from Free
         lvcreate --yes --name "$_lvrootfs" -l +"$_slvrootfs"%FREE "$_vgname"
-        echo "cucu"
       elif [ "$_slvrootfs" -gt 0 ]; then # If user enter a size for rootfs logical volume create this lvrootfs
         # Convert _slvrootfs from percent to MB
         _slvrootfs_MB=$(((_FREE_PE*_PE_Size*_slvrootfs)/100))
