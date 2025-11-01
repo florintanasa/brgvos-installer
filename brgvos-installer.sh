@@ -1229,18 +1229,18 @@ set_bootloader() {
     fi
   done
   # If exist encrypted device prepare the files needed for boot with Passphrase on initramfs
-  if [ "$bool" -eq 1 ]; then
+  if [ "$bool" -eq 1 ] && [ "$_boot" -eq 0 ]; then # We choose full encrypted without specific mount point for /boot dev
+    index=0 # Init index
     # Create cryptlvm.key file to store Passphrase
     chroot $TARGETDIR dd bs=512 count=4 if=/dev/urandom of=/boot/cryptlvm.key >>$LOG 2>&1
-    # Init index
-    index=0
     # Add for every device encrypted a record in /etc/crypttab and Passphrase in cryptlvm.key
     for _encrypt in $CRYPTS; do
       CRYPT_UUID=$(blkid -s UUID -o value "${luks_devices[index]}") # Got UUID for _encrypt device
-      echo "I founded encrypted $_encrypt from device ${luks_devices[index]} with UUID $CRYPT_UUID" >>"$LOG"
+      echo "I founded encrypted $_encrypt from device ${luks_devices[index]} with UUID $CRYPT_UUID" >>$LOG
       awk 'BEGIN{print "'"$_encrypt"' UUID='"$CRYPT_UUID"' /boot/cryptlvm.key luks"}' >> $TARGETDIR/etc/crypttab
-      echo "Add Passphrase for ${bold}${luks_devices[index]}${reset}" >>"$LOG"
+      echo "Add Passphrase for ${bold}${luks_devices[index]}${reset}" >>$LOG
       echo -n "$PASSPHRASE" | cryptsetup luksAddKey "${luks_devices[index]}" $TARGETDIR/boot/cryptlvm.key >>$LOG 2>&1
+      _rd_luks_uuid+="rd.luks.uuid=$CRYPT_UUID "
       ((index++))  # Increment index
     done
     # Change permission to only root to rw for cryptlvm.key
@@ -1253,12 +1253,32 @@ set_bootloader() {
     if [ "$(get_option SOURCE)" = "local" ]; then
       chroot $TARGETDIR dracut --no-hostonly --force >>$LOG 2>&1
     else # for source = net dracut call directly not work but work xbps-reconfigure
-      chroot $TARGETDIR xbps-reconfigure -fa >>$LOG 2>&1
+      chroot $TARGETDIR xbps-reconfigure -fa >>LOG 2>&1
     fi
-    echo "Enable cryptodisk option in grub config" >>$LOG
+    echo "Enable crypto disk option in grub config" >>$LOG
     chroot $TARGETDIR sed -i '$aGRUB_ENABLE_CRYPTODISK=y' /etc/default/grub >>$LOG 2>&1
+  elif  [ "$bool" -eq 1 ] && [ "$_boot" -eq 1 ]; then # We choose full encrypted with specific mount point for /boot dev
+    index=0 # Init index
+    echo "Prepare /etc/crypttab for not full encrypted" >>$LOG
+    for _encrypt in $CRYPTS; do
+      CRYPT_UUID=$(blkid -s UUID -o value "${luks_devices[index]}") # Got UUID for _encrypt device
+      echo "I founded encrypted $_encrypt from device ${luks_devices[index]} with UUID $CRYPT_UUID" >>$LOG
+      awk 'BEGIN{print "'"$_encrypt"' UUID='"$CRYPT_UUID"' none luks"}' >> $TARGETDIR/etc/crypttab
+      _rd_luks_uuid+="rd.luks.uuid=$CRYPT_UUID "
+      ((index++))  # Increment index
+    done
+    # Create file 10-crypt.conf is a config for dracut
+    chroot $TARGETDIR touch /etc/dracut.conf.d/10-crypt.conf >>$LOG 2>&1
+    # Add in file 10-crypt.conf information necessary for dracut
+    awk 'BEGIN{print "install_items+=\" /etc/crypttab \""}' >> $TARGETDIR/etc/dracut.conf.d/10-crypt.conf
+    echo "Generate again initramfs because was created a config file on dracut for crypted device(s) ${bold}$ROOTFS${reset}" >>$LOG
+    if [ "$(get_option SOURCE)" = "local" ]; then
+      chroot $TARGETDIR dracut --no-hostonly --force >>$LOG 2>&1
+    else # for source = net dracut call directly not work but work xbps-reconfigure
+      chroot $TARGETDIR xbps-reconfigure -fa >>LOG 2>&1
+    fi
   else
-    echo "Device $ROOTFS is not crypted"  >>$LOG
+    echo "Type of installation is not encrypted"  >>$LOG
   fi
   # Install the Grub and if not have success inform the user with a message dialog
   echo "Running ${bold}grub-install $grub_args $dev${reset}..." >>$LOG
