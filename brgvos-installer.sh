@@ -1642,7 +1642,7 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       echo "For LVM+LUKS is used disk(s) ${bold}$disk_name${reset}" >>"$LOG"
       # Read every line from disk_name into matrices
       mapfile -t _map <<< "$disk_name"
-      echo "Do determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
+      echo "Determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
       # Get first element from matrices
       # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
       disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
@@ -1651,7 +1651,7 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       echo "For LVM is used disk(s) ${bold}$disk_name${reset}" >>"$LOG"
       # Read every line from disk_name into matrices
       mapfile -t _map <<< "$disk_name"
-      echo "Do determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
+      echo "Determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
       # Get first element from matrices
       # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
       disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
@@ -1665,7 +1665,7 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
     else # For all over
       disk_name=$(lsblk -ndo pkname "$dev")
-      echo "To determine type of disk (SSD/HDD) is used ${bold}$disk_name${reset}" >>"$LOG"
+      echo "Determine type of disk (SSD/HDD) is used ${bold}$disk_name${reset}" >>"$LOG"
       disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
     fi
     # Prepare options for mount command for HDD or SSD, but first check if is HDD
@@ -1775,13 +1775,13 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       mapfile -t _map <<< "$disk_name"
       # Get element from matrices
       disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
-      echo "Do determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
+      echo "Determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
     elif [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 0 ]; then # For LVM
       disk_name=$(lsblk -ndo pkname $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}') | sort -u)
       echo "For LVM is used disk(s) ${bold}$disk_name${reset}" >>"$LOG"
       # Read every line from disk_name into matrices
       mapfile -t _map <<< "$disk_name"
-      echo "Do determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
+      echo "Determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
       # Get element from matrices
       disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
     elif [ "$_crypt" -eq 1 ] && [ "$_lvm" -eq 0 ]; then # For LUKS
@@ -1794,7 +1794,7 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
     else # For all over, if exist :)
       disk_name=$(lsblk -ndo pkname "$dev")
-      echo "To determine type of disk (SSD/HDD) is used ${bold}$disk_name${reset}" >>"$LOG"
+      echo "Determine type of disk (SSD/HDD) is used ${bold}$disk_name${reset}" >>"$LOG"
       disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
     fi
     # Add entry to target fstab
