@@ -1291,15 +1291,16 @@ set_bootloader() {
   echo "Preparing the Logo and name in the grub menu ${bold}$TARGETDIR/etc/default/grub${reset}..." >>$LOG
   chroot $TARGETDIR sed -i 's+#GRUB_BACKGROUND=/usr/share/void-artwork/splash.png+GRUB_BACKGROUND=/usr/share/brgvos-artwork/splash.png+g' /etc/default/grub >>$LOG 2>&1
   chroot $TARGETDIR sed -i 's/GRUB_DISTRIBUTOR="Void"/GRUB_DISTRIBUTOR="BRGV-OS"/g' /etc/default/grub >>$LOG 2>&1
-  if [ "$bool" -eq 1 ]; then # For encrypted device
+  if [ "$bool" -eq 1 ] && [ "$_boot" -eq 0 ]; then # For full encrypted installation
     echo "Prepare parameters on Grub for crypted device(s) ${bold}${luks_devices[*]}${reset}"  >>$LOG
-    chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 rd.auto=1 cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash"/g' /etc/default/grub >>$LOG 2>&1
-  else # For not encrypted device
+    #chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 rd.auto=1 cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash"/g' /etc/default/grub >>$LOG 2>&1
+    chroot $TARGETDIR sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4\"/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4 ${_rd_luks_uuid} cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash\"/g" /etc/default/grub >>$LOG 2>&1
+  else # For not full encrypted installation
     echo "Prepare parameters on Grub for device ${bold}$ROOTFS${reset}"  >>$LOG
-    chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 quiet splash"/g' /etc/default/grub >>$LOG 2>&1
+    chroot $TARGETDIR sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4\"/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4 ${_rd_luks_uuid} quiet splash\"/g" /etc/default/grub >>$LOG 2>&1
   fi
   chroot $TARGETDIR sed -i '$aGRUB_DISABLE_OS_PROBER=false' /etc/default/grub >>$LOG 2>&1
-  echo "Running grub-mkconfig on ${bold}$TARGETDIR${reset}..." >>$LOG
+  echo "Running grub-mkconfig on ${bold}$TARGETDIR${reset}..." >>"$LOG"
   chroot $TARGETDIR grub-mkconfig -o /boot/grub/grub.cfg >>$LOG 2>&1
   # Build the Grub configure file and if not have success inform the user with a message dialog and exit from installer
   if [ $? -ne 0 ]; then
