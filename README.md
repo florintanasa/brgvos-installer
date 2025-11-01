@@ -129,6 +129,10 @@ Because an image say more like 1000 words, next is some video examples, so this 
 |:--------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
 | Source: `Local`</br>LVM&LUKS: `NO`</br>Filesystems: `ext4` | [<img src="https://img.youtube.com/vi/dD8Q4JN7lYw/maxresdefault.jpg"/>](https://www.youtube.com/embed/dD8Q4JN7lYw?autoplay=1&mute=1) |
 
+|                                             BRGV-OS install in not full encrypted mode                                              |                                                                                                                                      |
+|:-----------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
+| Source: `Local`</br>LVM&LUKS: `LVM`+`LUKS`</br>LVSWAP (GB): `6`</br>LVROTFS (%): `30`</br>LVHOME (%): `60`</br>Filesystems: `btrfs` | [<img src="https://img.youtube.com/vi/7Jb-8-Kc6YM/maxresdefault.jpg"/>](https://www.youtube.com/embed/7Jb-8-Kc6YM?autoplay=1&mute=1) |
+
 |                                        Void Linux install with brgvos-installer on LVM                                         |                                                                                                                                      |
 |:------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
 | Source: `Network`</br>LVM&LUKS: `LVM`</br>LVSWAP (GB): `0`</br>LVROTFS (%): `30`</br>LVHOME (%): `70`</br>Filesystems: `btrfs` | [<img src="https://img.youtube.com/vi/x9IMfU4ZXuw/maxresdefault.jpg"/>](https://www.youtube.com/embed/x9IMfU4ZXuw?autoplay=1&mute=1) |
