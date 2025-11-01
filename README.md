@@ -1,4 +1,4 @@
-# brgvos-installer
+# $\textcolor{cyan}{\textbf {brgvos-installer}}$
 BRGV-OS Linux installer implemented in GNU Bash.  
 [BRGV-OS](https://github.com/florintanasa/brgvos-void) is a spin Void Linux distribution.  
 
@@ -33,7 +33,7 @@ The installer provides the following installation modes:
 > To make partitions on used disks is better to use `fdisk` utility, `cfdisk` is easier but not delete signatures 
 > for LVM & LUKS if exist from over installation. 
   
-## Option menu Define LVM data
+## $\textcolor{teal}{Option\ menu\ -\ Define\ some\ necessary\ data\ (LVM)}$
 To explain the parameters from `Define some necessary data` form:  
 1. Volume group name (VG): - is the name for volume group, have default value `vg0`;
 2. Logical volume name for swap: - is the name for the logical volume use for swap , have default value `lvswap`;
@@ -114,7 +114,7 @@ and result in **GB**:
 If `LVSWAP` is `0`, all spaces are shared by `LVHOME` and `LVROOTFS`, in their percentages, and if `LVHOME` is also `0`,
 all the spaces are allocated in percentages to `LVROOTFS`.
 
-## Video examples
+## $\textcolor{teal}{Video\ examples}$
 Because an image say more like 1000 words, next is some video examples, so this make many, many words :)  
 
 | BRGV-OS install on LVM in HDD                                                                                                 |                                                                                                                                      |
