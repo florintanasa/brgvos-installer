@@ -1201,13 +1201,15 @@ menu_bootloader() {
 # Function to set bootloader from loaded saved configure file
 set_bootloader() {
   # Declare some local variables
-  local dev _encrypt _rootfs _bool bool index
+  local dev _encrypt _rootfs _bool bool index _boot _rd_luks_uuid
   local -a luks_devices # Declare matrices
   # Initialise variables
   dev=$(get_option BOOTLOADER)
   grub_args=
   bool=0
   _bool=0
+  # Check if is defined mount device for /boot
+  [ -n "$(grep -E '/boot .*' /tmp/.brgvos-installer.conf)" ] && _boot=1 || _boot=0
   # Check if user choose an option in witch device bootloader to be installed, if not chose return
   if [ "$dev" = "none" ]; then return; fi
   # Check if it's an EFI system via efivars module.
