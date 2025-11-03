@@ -1752,7 +1752,7 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
         if [ "$_home" -eq 0 ]; then # If is not defined other mount point for /home, mount subvolume @home /home now
           mount -t "$fstype" -o "$options",subvol=@home "$dev" "$TARGETDIR"/home
         fi
-        mount -t "$fstype" -o "$options",subvol=@snapshots "$dev" "$TARGETDIR"/.snapshots
+        mount -t "$fstype" -o "$options",nodev,noexec,nosuid,nodatacow,subvol=@snapshots "$dev" "$TARGETDIR"/.snapshots
         mount -t "$fstype" -o "$options",subvol=@var_log "$dev" "$TARGETDIR"/var/log
         mount -t "$fstype" -o "$options",subvol=@var_lib "$dev" "$TARGETDIR"/var/lib
       } >>"$LOG" 2>&1
@@ -1772,7 +1772,7 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
         if [ "$_home" -eq 0 ]; then # If is not defined other mount point for /home, add entry now in fstab
           echo "UUID=$uuid /home $fstype $options,subvol=@home 0 $fspassno"
         fi
-        echo "UUID=$uuid /.snapshots $fstype $options,subvol=@snapshots 0 $fspassno"
+        echo "UUID=$uuid /.snapshots $fstype $options,nodev,noexec,nosuid,nodatacow,subvol=@snapshots 0 $fspassno"
         echo "UUID=$uuid /var/log $fstype $options,subvol=@var_log 0 $fspassno"
         echo "UUID=$uuid /var/lib $fstype $options,subvol=@var_lib 0 $fspassno"
       } >>"$TARGET_FSTAB"
@@ -1874,20 +1874,32 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       echo "Options, for filesystem ${bold}$fstype${reset}, used for mount ${bold}$mntpt${reset} in fstab
        is ${bold}$options${reset} on ${bold}SSD${reset}" >>"$LOG"
     fi
+    _basename_mntpt=$(basename "$mntpt")
     # Create subvolume @home and mount in /home
     if [ "$fstype" = "btrfs" ] && [ "$mntpt" = "/home" ]; then
       {
         echo "Running ${bold}btrfs subvolume create ${TARGETDIR}${mntpt}/@home${reset}"
         btrfs subvolume create ${TARGETDIR}${mntpt}/@home
-        echo "Unmounting ${bold}$dev${reset} on ${bold}$mntpt${reset} ($fstype)..."
+        echo "Unmounting ${bold}$dev${reset} from ${bold}$mntpt${reset} ($fstype)..."
         umount ${TARGETDIR}${mntpt}
         echo "Mounting ${bold}$dev${reset} on ${bold}$mntpt${reset} add to option ${bold}subvol=@home${reset} ..."
         mount -t "$fstype" -o "$options",subvol=@home "$dev" ${TARGETDIR}${mntpt}
+      } >>"$LOG" 2>&1
+    elif [ "$fstype" = "btrfs" ] && [ "$mntpt" != "/home" ]; then  # Create subvolume @$mntpt and mount for overs
+      {
+        echo "Running ${bold}btrfs subvolume create ${TARGETDIR}${mntpt}/@$_basename_mntpt${reset}"
+        btrfs subvolume create ${TARGETDIR}${mntpt}/@$_basename_mntpt
+        echo "Unmounting ${bold}$dev${reset} from ${bold}$mntpt${reset} ($fstype)..."
+        umount ${TARGETDIR}${mntpt}
+        echo "Mounting ${bold}$dev${reset} on ${bold}$mntpt${reset} add to option ${bold}subvol=@$_basename_mntpt${reset} ..."
+        mount -t "$fstype" -o "$options",nodev,nosuid,nodatacow,subvol=@$_basename_mntpt "$dev" ${TARGETDIR}${mntpt}
       } >>"$LOG" 2>&1
     fi
     # Add entry on fstab
     if [ "$fstype" = "btrfs" ] && [ "$mntpt" = "/home" ]; then
       echo "UUID=$uuid $mntpt $fstype $options,subvol=@home 0 $fspassno" >>"$TARGET_FSTAB"
+    elif [ "$fstype" = "btrfs" ] && [ "$mntpt" != "/home" ]; then
+      echo "UUID=$uuid $mntpt $fstype $options,nodev,nosuid,nodatacow,subvol=@$_basename_mntpt 0 $fspassno" >>"$TARGET_FSTAB"
     else
       echo "UUID=$uuid $mntpt $fstype $options 0 $fspassno" >>"$TARGET_FSTAB"
     fi
