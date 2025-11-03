@@ -1302,9 +1302,8 @@ set_bootloader() {
     echo "Enable crypto disk option in grub config" >>$LOG
     chroot $TARGETDIR sed -i '$aGRUB_ENABLE_CRYPTODISK=y' /etc/default/grub >>$LOG 2>&1
   elif  [ "$bool" -eq 1 ] && [ "$_boot" -eq 1 ]; then # We choose full encrypted with specific mount point for /boot dev
-    index=0 # Init index
-    echo "Prepare /etc/crypttab for not full encrypted" >>$LOG
-    for _encrypt in $CRYPTS; do
+    echo "Prepare /etc/crypttab and /etc/dracut.conf.d/10-crypt.conf for not full encrypted" >>$LOG
+    for _encrypt in $_crypts; do
       CRYPT_UUID=$(blkid -s UUID -o value "${luks_devices[index]}") # Got UUID for _encrypt device
       echo "I founded encrypted $_encrypt from device ${luks_devices[index]} with UUID $CRYPT_UUID" >>$LOG
       awk 'BEGIN{print "'"$_encrypt"' UUID='"$CRYPT_UUID"' none luks"}' >> $TARGETDIR/etc/crypttab
@@ -1337,7 +1336,6 @@ set_bootloader() {
   chroot $TARGETDIR sed -i 's/GRUB_DISTRIBUTOR="Void"/GRUB_DISTRIBUTOR="BRGV-OS"/g' /etc/default/grub >>$LOG 2>&1
   if [ "$bool" -eq 1 ] && [ "$_boot" -eq 0 ]; then # For full encrypted installation
     echo "Prepare parameters on Grub for crypted device(s) ${bold}${luks_devices[*]}${reset}"  >>$LOG
-    #chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 rd.auto=1 cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash"/g' /etc/default/grub >>$LOG 2>&1
     chroot $TARGETDIR sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4\"/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4 ${_rd_luks_uuid} cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash\"/g" /etc/default/grub >>$LOG 2>&1
   else # For not full encrypted installation
     echo "Prepare parameters on Grub for device ${bold}$ROOTFS${reset}"  >>$LOG
@@ -1606,7 +1604,6 @@ create_filesystems() {
   while [ $# -ne 0 ]; do
     dev=$2; fstype=$3; mntpt="$5"; mkfs=$6
     shift 6
-
     # swap partitions
     if [ "$fstype" = "swap" ]; then
       swapoff "$dev" >/dev/null 2>&1
@@ -2325,7 +2322,7 @@ menu() {
     cp $CONF_FILE /tmp/conf_hidden.$$;
     sed -i "s/^ROOTPASSWORD .*/ROOTPASSWORD <-hidden->/" /tmp/conf_hidden.$$
     sed -i "s/^USERPASSWORD .*/USERPASSWORD <-hidden->/" /tmp/conf_hidden.$$
-    DIALOG --title "Saved settings for installation" --textbox /tmp/conf_hidden.$$ 14 60
+    DIALOG --title "Saved settings for installation" --textbox /tmp/conf_hidden.$$ 14 70
     rm /tmp/conf_hidden.$$
     return
   fi
