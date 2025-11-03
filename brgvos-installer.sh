@@ -201,6 +201,9 @@ DIE() {
   rval=$1
   [ -z "$rval" ] && rval=0
   clear
+  set_option INDEX "" # clear INDEX value
+  set_option DEVCRYPT "" # clear DEVCRYPT value
+  set_option CRYPTS "" # clear CRYPTS value
   rm -f "$ANSWER" "$TARGET_FSTAB" "$TARGET_SERVICES"
   # re-enable printk
   if [ -w /proc/sys/kernel/printk ]; then
@@ -772,13 +775,20 @@ set_lvm_luks() {
   _lvswap=$(get_option LVSWAP)
   _lvrootfs=$(get_option LVROOTFS)
   _lvhome=$(get_option LVHOME)
+  _lvextra_1=$(get_option LVEXTRA-1)
+  _lvextra_2=$(get_option LVEXTRA-2)
   _slvswap=$(get_option SLVSWAP)
   _slvrootfs=$(get_option SLVROOTFS)
   _slvhome=$(get_option SLVHOME)
+  _slvextra_1=$(get_option SLVEXTRA-1)
+  _slvextra_2=$(get_option SLVEXTRA-2)
+  _index=$(get_option INDEX)
+  _devcrypt=$(get_option DEVCRYPT)
+  _crypts=$(get_option CRYPTS)
   # Check if user choose to encrypt the device
   if [ "$_crypt" = 1 ]; then
       PASSPHRASE=$(get_option USERPASSWORD)
-      _index=0  # Initialize an index for unique naming
+    [ -z "$_index" ] && _index=0  # Initialize an index for unique naming if not exist saved in configure file
       for _device in $_pv; do  # Ensure $_pv contains the correct devices
         {
             echo -n "$PASSPHRASE" | cryptsetup luksFormat --type=luks1 "$_device" -d -
@@ -791,19 +801,18 @@ set_lvm_luks() {
            _crypts+=" "
            _index=$((_index + 1))  # Increment the index for the next device
         } >>"$LOG" 2>&1
-        # Check if LVM was not selected
-        #if [ "$_lvm" = 0 ]; then
-        # Got device encrypt
         _devcrypt+=$(for s in /sys/class/block/$(basename "$(readlink -f /dev/mapper/$_crypt_name)")/slaves/*; do echo "/dev/${s##*/}"; done)
         _devcrypt+=" "
-        #fi
-    done
-        # Delete last space
-        _cd=$(echo "$_cd"|awk '{$1=$1;print}')
-        _crypts=$(echo "$_crypts"|awk '{$1=$1;print}')
-        export CRYPTS="${_crypts}"
-        export DEVCRYPT="${_devcrypt}"
-        echo "Device(s) ${DEVCRYPT} was encrypted" >>"$LOG"
+      done
+    set_option INDEX "$_index" # save in configure file the last unused index to be used for next set_lvm_luks appellation
+    # Delete last space
+    _cd=$(echo "$_cd"|awk '{$1=$1;print}')
+    #_crypts=$(echo "$_crypts"|awk '{$1=$1;print}')
+    #_devcrypt=$(echo "$_devcrypt"|awk '{$1=$1;print}')
+    set_option CRYPTS "${_crypts}"
+    set_option DEVCRYPT "${_devcrypt}"
+    #export DEVCRYPT="${_devcrypt}"
+    echo "Device(s) ${_devcrypt} was encrypted" >>"$LOG"
   fi
   # Check if user choose to use LVM for devices
   if [ "$_lvm" = 1 ]; then
@@ -1201,13 +1210,15 @@ menu_bootloader() {
 # Function to set bootloader from loaded saved configure file
 set_bootloader() {
   # Declare some local variables
-  local dev _encrypt _rootfs _bool bool index _boot _rd_luks_uuid
+  local dev _encrypt _rootfs _bool bool index _boot _rd_luks_uuid _crypts
   local -a luks_devices # Declare matrices
   # Initialise variables
   dev=$(get_option BOOTLOADER)
+  _crypts=$(get_option CRYPTS)
   grub_args=
   bool=0
   _bool=0
+  index=0 # Init index
   # Check if is defined mount device for /boot
   [ -n "$(grep -E '/boot .*' /tmp/.brgvos-installer.conf)" ] && _boot=1 || _boot=0
   # Check if user choose an option in witch device bootloader to be installed, if not chose return
@@ -1228,13 +1239,14 @@ set_bootloader() {
       luks_devices+=("$_rootfs")
     fi
   done
+  _crypts=$(echo "$_crypts"|awk '{$1=$1;print}') # Delete last space
   # If exist encrypted device prepare the files needed for boot with Passphrase on initramfs
   if [ "$bool" -eq 1 ] && [ "$_boot" -eq 0 ]; then # We choose full encrypted without specific mount point for /boot dev
-    index=0 # Init index
+    echo "Prepare /boot/cryptlvm.key, /etc/crypttab and /etc/dracut.conf.d/10-crypt.conf for full encrypted" >>$LOG
     # Create cryptlvm.key file to store Passphrase
     chroot $TARGETDIR dd bs=512 count=4 if=/dev/urandom of=/boot/cryptlvm.key >>$LOG 2>&1
     # Add for every device encrypted a record in /etc/crypttab and Passphrase in cryptlvm.key
-    for _encrypt in $CRYPTS; do
+    for _encrypt in $_crypts; do
       CRYPT_UUID=$(blkid -s UUID -o value "${luks_devices[index]}") # Got UUID for _encrypt device
       echo "I founded encrypted $_encrypt from device ${luks_devices[index]} with UUID $CRYPT_UUID" >>$LOG
       awk 'BEGIN{print "'"$_encrypt"' UUID='"$CRYPT_UUID"' /boot/cryptlvm.key luks"}' >> $TARGETDIR/etc/crypttab
@@ -1548,15 +1560,12 @@ as FAT32, mountpoint /boot/efi and at least with 100MB of size." ${MSGBOXSIZE}
 create_filesystems() {
   # Define some variables local
   local mnts dev mntpt fstype fspassno mkfs size rv uuid MKFS mem_total swap_need disk_name disk_type ROOT_UUID SWAP_UUID
-  local _lvm _crypt _vgname _lvswap _lvrootfs _home
+  local _lvm _crypt _vgname _lvswap _lvrootfs _home _basename_mntpt _devcrypt
   # Initialize some local variables
   disk_type=0
   _lvm=$(get_option LVM)
   _crypt=$(get_option CRYPTO_LUKS)
-  _vgname=$(get_option VGNAME)
-  _lvswap=$(get_option LVSWAP)
-  _lvrootfs=$(get_option LVROOTFS)
-
+  _devcrypt=$(get_option DEVCRYPT)
   # Check if is defined mount device for /home
   [ -n "$(grep -E '/home .*' /tmp/.brgvos-installer.conf)" ] && _home=1 || _home=0
   # Output all defined MOUNTPOINT from configure file
@@ -1616,8 +1625,9 @@ create_filesystems() {
     mkdir -p "$TARGETDIR"
       echo "Mounting ${bold}$dev${reset} on ${bold}$mntpt${reset} (${bold}$fstype${reset})..." >>"$LOG"
       mount -t "$fstype" "$dev" "$TARGETDIR" >>"$LOG" 2>&1
-      if [ -n "${DEVCRYPT}" ]; then
-          ROOTFS="${DEVCRYPT}"
+    _devcrypt=$(echo "$_devcrypt"|awk '{$1=$1;print}') # delete last space
+      if [ -n "${_devcrypt}" ]; then
+          ROOTFS="${_devcrypt}"
           echo "For rootfs is used next encrypted device(s) ${bold}${ROOTFS}${reset}" >>"$LOG"
         else
           ROOTFS=$dev
