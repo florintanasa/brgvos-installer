@@ -187,12 +187,14 @@ options_btrfs_HDD=`compress=zstd,noatime,space_cache=v2`
 |      vfat       |                      defaults                      |                    defaults                     |
 |      f2fs       |                      defaults                      |                    defaults                     |
 
->[!INFORMATION]  
+>[!IMPORTAN]  
 > If is need more security for LVEXTRA-1 and LVEXTRA-1 we can add also `noexec` for these partitions
+  
 > [!WARNING]  
-> Option `nodatacow` invalidate `compress=zstd` but is used for partitions where is written frequent like virtual machine,
-> database etc. For this is necessary to use others solutions for backup. If is needed `COW` or `compress` delete 
-> `nodatacow` frn installer or from `/etcfstab`.
+> Option `nodatacow` invalidate `compress=zstd` but is used for partitions where files is rewritten frequent like 
+> virtual machine, database etc. For this is necessary to use others solutions for backup. If is needed `COW` or 
+> `compress` delete `nodatacow` from installer before to start installation or from `/etc/fstab` after installation if 
+> in this directory was not written something in installation process.
   
 
 Was tested with **BRGV-OS** live image and **Void Linux** live image.  
