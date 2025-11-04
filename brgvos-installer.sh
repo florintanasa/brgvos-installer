@@ -847,11 +847,11 @@ set_lvm_luks() {
         set -- $_cd; pvcreate "$@" # Create physical volume
         set -- $_cd; vgcreate "$_vgname" "$@" # Create volume group
       fi
-      # Create logical volume for swap, home and rootfs
+      # Create logical volume for extra-1, extra-2, swap, home and rootfs
       if [ "$_slvswap" -gt 0 ]; then # If user enter a size for swap logical volume create this lvswap
         lvcreate --yes --name "$_lvswap" -L "$_slvswap"G "$_vgname"
       fi
-      # Calculate some variables needed for _slvrootfs and _slvhome
+      # Calculate some variables needed for _slvextra_2, _slvextra_1, _slvrootfs and _slvhome
       _FREE_PE=$(vgdisplay $_vgname | grep "Free  PE" | awk '{print $5}')
       _PE_Size=$(vgdisplay $_vgname | grep "PE Size" | awk '{print int($3)}')
       echo "_FREE_PE=$_FREE_PE"
