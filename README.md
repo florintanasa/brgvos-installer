@@ -54,42 +54,61 @@ can be `lvlibvirt`, default is `0`;
 For the **names** is possible to use any alphanumeric characters and `-`, without special characters and space.
 For the **size** we look on next algorithm used in script:
 ```bash
-# Create logical volume for swap, home and rootfs
+# Create logical volume for extra-1, extra-2, swap, home and rootfs
       if [ "$_slvswap" -gt 0 ]; then # If user enter a size for swap logical volume create this lvswap
         lvcreate --yes --name "$_lvswap" -L "$_slvswap"G "$_vgname"
       fi
-      # Calculate some variables needed for _slvrootfs and _slvhome
+      # Calculate some variables needed for _slvextra_2, _slvextra_1, _slvrootfs and _slvhome
       _FREE_PE=$(vgdisplay $_vgname | grep "Free  PE" | awk '{print $5}')
       _PE_Size=$(vgdisplay $_vgname | grep "PE Size" | awk '{print int($3)}')
       echo "_FREE_PE=$_FREE_PE"
       echo "_PE_Size=$_PE_Size"
       _FREE_PE=$((_FREE_PE-2)) # subtract 2 units, it is possible to give an error for 100% (rounded to the whole number)
+      if [ "$_slvextra_2" -gt 0 ] ; then # If user enter a size for lvextra-2 logical volume
+         # Convert _slvextra_2 from percent to MB
+        _slvextra_2_MB=$(((_FREE_PE*_PE_Size*_slvextra_2)/100))
+        lvcreate --yes --name "$_lvextra_2" -L "$_slvextra_2_MB"M "$_vgname"
+        echo "$_lvextra_2 (MB)=$_slvextra_2_MB"
+      fi
+      if [ "$_slvextra_1" -gt 0 ] ; then # If user enter a size for lvextra-1 logical volume
+         # Convert _slvextra_1 from percent to MB
+        _slvextra_1_MB=$(((_FREE_PE*_PE_Size*_slvextra_1)/100))
+        lvcreate --yes --name "$_lvextra_1" -L "$_slvextra_1_MB"M "$_vgname"
+        echo "$_lvextra_1 (MB)=$_slvextra_1_MB"
+      fi
       if [ "$_slvhome" -gt 0 ] ; then # If user enter a size for home logical volume
          # Convert _slvhome from percent to MB
         _slvhome_MB=$(((_FREE_PE*_PE_Size*_slvhome)/100))
         lvcreate --yes --name "$_lvhome" -L "$_slvhome_MB"M "$_vgname"
-        echo "_slvhome_MB=$_slvhome_MB"
+        echo "$_lvhome (MB)=$_slvhome_MB"
       fi
-      if [ "$_slvhome" -eq 0 ] ; then # If user not enter a size for home logical volume make lvrootfs xxx% from Free
+      if [ "$_slvrootfs" -gt 0 ] && [ "$_slvhome" -eq 0 ] ; then # If user not enter a size for home logical volume make lvrootfs xxx% from Free
         lvcreate --yes --name "$_lvrootfs" -l +"$_slvrootfs"%FREE "$_vgname"
       elif [ "$_slvrootfs" -gt 0 ]; then # If user enter a size for rootfs logical volume create this lvrootfs
         # Convert _slvrootfs from percent to MB
         _slvrootfs_MB=$(((_FREE_PE*_PE_Size*_slvrootfs)/100))
         lvcreate --yes --name "$_lvrootfs" -L "$_slvrootfs_MB"M "$_vgname"
-        echo "_slvrootfs_MB=$_slvrootfs_MB"
+        echo "$_lvrootfs (MB)=$_slvrootfs_MB"
       fi
 ```
 
-The input field for `Size for LVSWAP (GB)`, can have any value greater then `0`, otherwise is not created and the space revenue 
-to the next logical volumes `lvhome` and `lvbrgvos`.  
-The input field for `Size for LVHOME (%)`, can have any value greater then `0`, otherwise is not created and the space revenue
-to the next logical volume `lvbrgvos`.
-The input field for `Size for LVROOTFS (%)`, can have any value greater `0`, otherwise is not created.
+The input field for `Size for LVSWAP (GB)`, can have any value greater then `0`, otherwise for `0` value is not created 
+and the space revenue to the others logical volumes.  
+The input field for `Size for LVHOME (%)`, can have any value greater then `0`, otherwise for `0` value is not created
+and the space revenue to the others logical volumes.
+The input field for `Size for LVROOTFS (%)`, can have any value greater `0`, otherwise for `0` value is not created
+and the space revenue to the others logical volumes.
+The input field for `Size for LVEXTRA-1 (%)`, can have any value greater `0`, otherwise for `0` value is not created
+and the space revenue to the others logical volumes.
+The input field for `Size for LVEXTRA-2 (%)`, can have any value greater `0`, otherwise for `0` value is not created
+and the space revenue to the others logical volumes.
 
-Next tables is more explicative for:
-* Size for LVSWAP (GB):  `6`  
-* Size for LVROOTFS (%): `30`  
-* Size for LVHOME (%):   `70`  
+Next tables is more explicative for volume group `VG0` created fom physical devices `ssd_1` and `ssd_2`:
+* Size for LVSWAP (GB):     `6`  
+* Size for LVROOTFS (%):   `30`  
+* Size for LVHOME (%):     `70`
+* Size for LVEXTRA-1 (%):   `0`
+* Size for LVEXTRA-2 (%):   `0`
 
 Usually we use in calculus (integer) the size of the disks in GB (is "commercial" size):
 
