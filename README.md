@@ -167,18 +167,22 @@ Because an image say more like 1000 words, next is some video examples, so this 
 ## $\textcolor{teal}{Mount\ options}$
 Installer script detect if used a SSD or HDD for partition ans use next mount options when install and `fstab` file.  
 
-|       FS        |                                         SSD                                          |                                HDD                                 |
-|:---------------:|:------------------------------------------------------------------------------------:|:------------------------------------------------------------------:|
-|  btrfs rootfs   |                compress=zstd,noatime,space_cache=v2,discard=async,ssd                |                compress=zstd,noatime,space_cache=v2                |
-|   btrfs home    |                compress=zstd,noatime,space_cache=v2,discard=async,ssd                |                compress=zstd,noatime,space_cache=v2                |
-|  btrfs extra-1  |    compress=zstd,noatime,space_cache=v2,discard=async,ssd,nodev,nosuid,nodatacow     |    compress=zstd,noatime,space_cache=v2,nodev,nosuid,nodatacow     |
-|  btrfs extra-2  |    compress=zstd,noatime,space_cache=v2,discard=async,ssd,nodev,nosuid,nodatacow     |    compress=zstd,noatime,space_cache=v2,nodev,nosuid,nodatacow     |
-| btrfs snapshots | compress=zstd,noatime,space_cache=v2,discard=async,ssd,nodev,noexec,nosuid,nodatacow | compress=zstd,noatime,space_cache=v2,nodev,noexec,nosuid,nodatacow |
-|     ext 4/3     |                         defaults,noatime,nodiratime,discard                          |                    defaults,noatime,nodiratime                     |
-|      ext 2      |                         defaults,noatime,nodiratime,discard                          |                    defaults,noatime,nodiratime                     |
-|       xfs       |                  defaults,noatime,nodiratime,discard,ssd,user_xattr                  |               defaults,noatime,nodiratime,user_xattr               |
-|      vfat       |                                       defaults                                       |                              defaults                              |
-|      f2fs       |                                       defaults                                       |                              defaults                              |
+options_btrfs_SSD=compress=zstd,noatime,space_cache=v2,discard=async,ssd
+options_btrfs_HDD=compress=zstd,noatime,space_cache=v2
+
+
+|       FS        |                        SSD                         |                       HDD                       |
+|:---------------:|:--------------------------------------------------:|:-----------------------------------------------:|
+|  btrfs rootfs   |                 options_btrfs_SSD                  |                options_btrfs_HDD                |
+|   btrfs home    |                 options_btrfs_SSD                  |                options_btrfs_HDD                |
+|  btrfs extra-1  |      options_btrfs_SSD,nodev,nosuid,nodatacow      |    options_btrfs_HDD,nodev,nosuid,nodatacow     |
+|  btrfs extra-2  |      options_btrfs_SSD,nodev,nosuid,nodatacow      |    options_btrfs_HDD,nodev,nosuid,nodatacow     |
+| btrfs snapshots |  options_btrfs_SSD,nodev,noexec,nosuid,nodatacow   | options_btrfs_HDD,nodev,noexec,nosuid,nodatacow |
+|     ext 4/3     |        defaults,noatime,nodiratime,discard         |           defaults,noatime,nodiratime           |
+|      ext 2      |        defaults,noatime,nodiratime,discard         |           defaults,noatime,nodiratime           |
+|       xfs       | defaults,noatime,nodiratime,discard,ssd,user_xattr |     defaults,noatime,nodiratime,user_xattr      |
+|      vfat       |                      defaults                      |                    defaults                     |
+|      f2fs       |                      defaults                      |                    defaults                     |
 
 Was tested with **BRGV-OS** live image and **Void Linux** live image.  
 I will back soon with more info...
