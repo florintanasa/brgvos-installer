@@ -210,5 +210,21 @@ options_btrfs_HDD=`compress=zstd,noatime,space_cache=v2`
   
 
 Was tested with **BRGV-OS** live image and **Void Linux** live image.  
+
+>[!IMPORTANT]
+> ### $\textcolor{green}{For\ passphrase\ is\ used\ user\ password}$
+>
+>
+> ### $\textcolor{orange}{For\ how\ to\ install,\ configure\ and\ use\ the\ \textbf {BRGV-OS}\ read\ on}$ [Wiki](https://github.com/florintanasa/brgvos-void/wiki)
+
+## $\textcolor{teal}{License}$
+
+This project is licensed under the GNU GENERAL PUBLIC LICENSE - see the [LICENSE](LICENSE) file for details
+
+## $\textcolor{red}{Warning}$
+
+This open-source software **brgvos-installer.sh** is distributed in the hope that it will be useful, but **WITHOUT ANY WARRANTY**.  
+A very good idea is to test first into virtual machine.
+
 I will back soon with more info...
 # Work is in progress...
