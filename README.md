@@ -152,8 +152,8 @@ Because an image say more like 1000 words, next is some video examples, so this 
 |:------------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
 | Source: `Local`</br>LVM&LUKS: `LVM`+`LUKS`</br>LVSWAP (GB): `14`</br>LVROTFS (%): `30`</br>LVHOME (%): `60`</br>Filesystems: `btrfs` | [<img src="https://img.youtube.com/vi/bk30gESYeJU/maxresdefault.jpg"/>](https://www.youtube.com/embed/bk30gESYeJU?autoplay=1&mute=1) |
 
-|      BRGV-OS install on tty console in SSD and HDD       |                                                                                                                                      |
-|:--------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
+|       BRGV-OS install on tty console in SSD and HDD        |                                                                                                                                      |
+|:----------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
 | Source: `Local`</br>LVM&LUKS: `NO`</br>Filesystems: `ext4` | [<img src="https://img.youtube.com/vi/dD8Q4JN7lYw/maxresdefault.jpg"/>](https://www.youtube.com/embed/dD8Q4JN7lYw?autoplay=1&mute=1) |
 
 |                                             BRGV-OS install in not full encrypted mode                                              |                                                                                                                                      |
