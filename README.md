@@ -39,9 +39,17 @@ To explain the parameters from `Define some necessary data` form:
 2. Logical volume name for swap: - is the name for the logical volume use for swap , have default value `lvswap`;
 3. Logical volume name for rootfs: - is the name for the logical volume used for rootfs `/`, have default value `lvbrgvos`;
 4. Logical volume name for home: - is the name for the logical volume use for home `/home` , have default value `lvhome`;
-5. Size for LVSWAP (GB): - is the space, in GB, allocated for logical volume used for swap, default value is `2*RAM`;
-6. Size for LVROOTFS (%): - is the space, in percentages, allocated for logical volume used for rootfs `/`, default is `30`;
-7. Size for LVHOME (%):- is the space, in percentages, allocated for logical volume used for home `/home`, default is `70`;
+5. Logical volume name for extra-1: - is the name for the logical volume use for over mounting point, can be`/var/lib/libvirt` 
+, have default value `lvlibvirt`; 
+6. Logical volume name for extra-2: - is the name for the logical volume use for over mounting point, can be`/srv`
+, have default value `lvsrv`; 
+7. Size for LVSWAP (GB): - is the space, in GB, allocated for logical volume used for swap, default value is `2*RAM`; 
+8. Size for LVROOTFS (%): - is the space, in percentages, allocated for logical volume used for rootfs `/`, default is `30`; 
+9. Size for LVHOME (%):- is the space, in percentages, allocated for logical volume used for home `/home`, default is `70`;
+10. Size for LVEXTRA-1 (%):- is the space, in percentages, allocated for logical volume used for extra-1 logical volume,
+can be `lvlibvirt`, default is `0`;
+11. Size for LVEXTRA-2 (%):- is the space, in percentages, allocated for logical volume used for extra-2 logical volume,
+    can be `lvsrv`, default is `0`;
 
 For the **names** is possible to use any alphanumeric characters and `-`, without special characters and space.
 For the **size** we look on next algorithm used in script:
