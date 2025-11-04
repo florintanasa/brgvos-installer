@@ -189,7 +189,7 @@ options_btrfs_HDD=`compress=zstd,noatime,space_cache=v2`
 
   
 >[!IMPORTANT]  
-> If is need more security for LVEXTRA-1 and LVEXTRA-1 we can add also `noexec` for these partitions. This option prevents 
+> If is need more security for LVEXTRA-1 and LVEXTRA-2 we can add also `noexec` for these partitions. This option prevents 
 > the execution of binaries on a mounted file system.
   
 > [!WARNING]  
