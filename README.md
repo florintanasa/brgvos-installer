@@ -213,9 +213,6 @@ Was tested with **BRGV-OS** live image and **Void Linux** live image.
 
 >[!IMPORTANT]
 > ### $\textcolor{green}{For\ passphrase\ is\ used\ user\ password}$
->
->
-> ### $\textcolor{orange}{For\ how\ to\ install,\ configure\ and\ use\ the\ \textbf {BRGV-OS}\ read\ on}$ [Wiki](https://github.com/florintanasa/brgvos-void/wiki)
 
 ## $\textcolor{teal}{License}$
 
