@@ -187,7 +187,8 @@ options_btrfs_HDD=`compress=zstd,noatime,space_cache=v2`
 |      vfat       |                      defaults                      |                    defaults                     |
 |      f2fs       |                      defaults                      |                    defaults                     |
 
->[!IMPORTAN]  
+  
+>[!IMPORTANT]  
 > If is need more security for LVEXTRA-1 and LVEXTRA-1 we can add also `noexec` for these partitions
   
 > [!WARNING]  
