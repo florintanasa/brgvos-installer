@@ -164,6 +164,21 @@ Because an image say more like 1000 words, next is some video examples, so this 
 |:------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
 | Source: `Network`</br>LVM&LUKS: `LVM`</br>LVSWAP (GB): `0`</br>LVROTFS (%): `30`</br>LVHOME (%): `70`</br>Filesystems: `btrfs` | [<img src="https://img.youtube.com/vi/x9IMfU4ZXuw/maxresdefault.jpg"/>](https://www.youtube.com/embed/x9IMfU4ZXuw?autoplay=1&mute=1) |
 
+## $\textcolor{teal}{Mount\ options}$
+Installer script detect if used a SSD or HDD for partition ans use next mount options when install and `fstab` file.  
+
+|       FS        |                                         SSD                                          |                                HDD                                 |
+|:---------------:|:------------------------------------------------------------------------------------:|:------------------------------------------------------------------:|
+|  btrfs rootfs   |                compress=zstd,noatime,space_cache=v2,discard=async,ssd                |                compress=zstd,noatime,space_cache=v2                |
+|   btrfs home    |                compress=zstd,noatime,space_cache=v2,discard=async,ssd                |                compress=zstd,noatime,space_cache=v2                |
+|  btrfs extra-1  |    compress=zstd,noatime,space_cache=v2,discard=async,ssd,nodev,nosuid,nodatacow     |    compress=zstd,noatime,space_cache=v2,nodev,nosuid,nodatacow     |
+|  btrfs extra-2  |    compress=zstd,noatime,space_cache=v2,discard=async,ssd,nodev,nosuid,nodatacow     |    compress=zstd,noatime,space_cache=v2,nodev,nosuid,nodatacow     |
+| btrfs snapshots | compress=zstd,noatime,space_cache=v2,discard=async,ssd,nodev,noexec,nosuid,nodatacow | compress=zstd,noatime,space_cache=v2,nodev,noexec,nosuid,nodatacow |
+|     ext 4/3     |                         defaults,noatime,nodiratime,discard                          |                    defaults,noatime,nodiratime                     |
+|      ext 2      |                         defaults,noatime,nodiratime,discard                          |                    defaults,noatime,nodiratime                     |
+|       xfs       |                  defaults,noatime,nodiratime,discard,ssd,user_xattr                  |               defaults,noatime,nodiratime,user_xattr               |
+|      vfat       |                                       defaults                                       |                              defaults                              |
+|      f2fs       |                                       defaults                                       |                              defaults                              |
 Was tested with **BRGV-OS** live image and **Void Linux** live image.  
 I will back soon with more info...
 # Work is in progress...
