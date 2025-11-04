@@ -179,6 +179,7 @@ Installer script detect if used a SSD or HDD for partition ans use next mount op
 |       xfs       |                  defaults,noatime,nodiratime,discard,ssd,user_xattr                  |               defaults,noatime,nodiratime,user_xattr               |
 |      vfat       |                                       defaults                                       |                              defaults                              |
 |      f2fs       |                                       defaults                                       |                              defaults                              |
+
 Was tested with **BRGV-OS** live image and **Void Linux** live image.  
 I will back soon with more info...
 # Work is in progress...
