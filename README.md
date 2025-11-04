@@ -164,16 +164,15 @@ Because an image say more like 1000 words, next is some video examples, so this 
 |:------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|
 | Source: `Network`</br>LVM&LUKS: `LVM`</br>LVSWAP (GB): `0`</br>LVROTFS (%): `30`</br>LVHOME (%): `70`</br>Filesystems: `btrfs` | [<img src="https://img.youtube.com/vi/x9IMfU4ZXuw/maxresdefault.jpg"/>](https://www.youtube.com/embed/x9IMfU4ZXuw?autoplay=1&mute=1) |
 
-|                                                             <sub>VG0: </br>`sda2`</sub>                                                              |                                                              <sub>VG1: </br>`sda3`</sub>                                                              |                                                          <sub>VG2: </br>`sdb1`+`sdc1`</sub>                                                           |                                                        <sub>VG3: </br>`sdb2`+`sdd1`</sub>                                                        |                            <sub>BRGV-OS is installed on full</br> encrypted mode on multiple </br>physical disks and LV</sub>                             |
+|                                                           <sub>VG0: </br>`sda2`</sub>                                                           |                                                           <sub>VG1: </br>`sda3`</sub>                                                            |                                                        <sub>VG2: </br>`sdb1`+`sdc1`</sub>                                                        |                                                        <sub>VG3: </br>`sdb2`+`sdd1`</sub>                                                        |                            <sub>BRGV-OS is installed on full</br> encrypted mode on multiple </br>physical disks and LV</sub>                             |
 |:-----------------------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------:|
 | <sub>LVM&LUKS: `LVM`+`LUKS`</br>LVSWAP (GB): `8`</br>LVROTFS (%): `100`</br>LVHOME (%): `0`</br>LVEXTRA-1 (%): `0`</br>LVEXTRA-2 (%): `0`</sub> | <sub> LVM&LUKS: `LVM`+`LUKS`</br>LVSWAP (GB): `0`</br>LVROTFS (%): `0`</br>LVHOME (%): `100`</br>LVEXTRA-1 (%): `0`</br>LVEXTRA-2 (%): `0`</sub> | <sub>LVM&LUKS: `LVM`+`LUKS`</br>LVSWAP (GB): `0`</br>LVROTFS (%): `0`</br>LVHOME (%): `0`</br>LVEXTRA-1 (%): `0`</br>LVEXTRA-2 (%): `100` </sub> | <sub>LVM&LUKS: `LVM`+`LUKS`</br>LVSWAP (GB): `0`</br>LVROTFS (%): `0`</br>LVHOME (%): `0`</br>LVEXTRA-1 (%): `100`</br>LVEXTRA-2 (%): `0` </sub> | [<img src="https://img.youtube.com/vi/PeSIfbE2e6o/maxresdefault.jpg" width=250 height=150/>](https://www.youtube.com/embed/PeSIfbE2e6o?autoplay=1&mute=1) |
 
 ## $\textcolor{teal}{Mount\ options}$
-Installer script detect if is used an SSD or HDD for partition and use next mount options when install and `fstab` file:  
+Installer script detect if is used for partitions an SSD or HDD and use the next mount options when install and in `fstab` file:  
 
-options_btrfs_SSD=compress=zstd,noatime,space_cache=v2,discard=async,ssd
-options_btrfs_HDD=compress=zstd,noatime,space_cache=v2
-
+options_btrfs_SSD=`compress=zstd,noatime,space_cache=v2,discard=async,ssd`  
+options_btrfs_HDD=`compress=zstd,noatime,space_cache=v2`  
 
 |       FS        |                        SSD                         |                       HDD                       |
 |:---------------:|:--------------------------------------------------:|:-----------------------------------------------:|
@@ -187,6 +186,14 @@ options_btrfs_HDD=compress=zstd,noatime,space_cache=v2
 |       xfs       | defaults,noatime,nodiratime,discard,ssd,user_xattr |     defaults,noatime,nodiratime,user_xattr      |
 |      vfat       |                      defaults                      |                    defaults                     |
 |      f2fs       |                      defaults                      |                    defaults                     |
+
+>[!INFORMATION]  
+> If is need more security for LVEXTRA-1 and LVEXTRA-1 we can add also `noexec` for these partitions
+> [!WARNING]  
+> Option `nodatacow` invalidate `compress=zstd` but is used for partitions where is written frequent like virtual machine,
+> database etc. For this is necessary to use others solutions for backup. If is needed `COW` or `compress` delete 
+> `nodatacow` frn installer or from `/etcfstab`.
+  
 
 Was tested with **BRGV-OS** live image and **Void Linux** live image.  
 I will back soon with more info...
