@@ -64,6 +64,7 @@
       <w>plugdev</w>
       <w>polkit</w>
       <w>printk</w>
+      <w>radiolist</w>
       <w>rootfound</w>
       <w>rootpassword</w>
       <w>runsvdir</w>
