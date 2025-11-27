@@ -2298,6 +2298,7 @@ menu() {
       "UserAccount" "Set primary user name and password" \
       "BootLoader" "Set disk to install bootloader" \
       "Partition" "Partition disk(s)" \
+      "Raid" "Raid software" \
       "LVM&LUKS" "Set LVM and crypto LUKS" \
       "Filesystems" "Configure filesystems and mount points" \
       "Install" "Start installation with saved settings" \
@@ -2319,6 +2320,7 @@ menu() {
       "UserAccount" "Set primary user name and password" \
       "BootLoader" "Set disk to install bootloader" \
       "Partition" "Partition disk(s)" \
+      "Raid" "Raid software" \
       "LVM&LUKS" "Set LVM and crypto LUKS" \
       "Filesystems" "Configure filesystems and mount points" \
       "Install" "Start installation with saved settings" \
