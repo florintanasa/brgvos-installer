@@ -783,6 +783,7 @@ menu_lvm_luks() {
     exec 3>&-
   fi
   #set_lvm_luks
+  LVMLUKS_DONE=1
 }
 
 # Function to create lvm and/or luks with loaded parameters from saved configure file
@@ -887,6 +888,11 @@ set_lvm_luks() {
       fi
     } >>"$LOG" 2>&1
   fi
+}
+
+# Function for choose partitions for raid software
+menu_raid() {
+  RAID_DONE=1
 }
 
 # Function for chose partition tool for modify partition table
