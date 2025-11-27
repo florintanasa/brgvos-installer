@@ -892,6 +892,56 @@ set_lvm_luks() {
 
 # Function for choose partitions for raid software
 menu_raid() {
+  local _desc _radiolist _answers rv
+  # Description for checklist box
+  _desc="Select what Raid Software you wish to define"
+  # Options for radiolist box
+  _radiolist=
+  raid0 "RAID 0" off \
+  raid1 "RAID 1" off
+  # Create dialog
+  DIALOG --no-tags --radiolist "$_desc" 20 60 2 \
+    raid0 "RAID 0" off \
+    raid1 "RAID 1" off \
+    raid5 "RAID 5" off \
+    raid6 "RAID 6" off \
+    raid10 "RAID 10" off
+  # Verify if the user accept the dialog
+  rv=$?
+  if [ "$rv" -eq 0 ]; then
+    _answers=$(cat "$ANSWER")
+    if echo "$_answers" | grep -w "raid0"; then
+      set_option RAID_0 "1"
+      set_option RAID_1 "0"
+      set_option RAID_5 "0"
+      set_option RAID_6 "0"
+      set_option RAID_10 "0"
+    elif echo "$_answers" | grep -w "raid1"; then
+      set_option RAID_0 "0"
+      set_option RAID_1 "1"
+      set_option RAID_5 "0"
+      set_option RAID_6 "0"
+      set_option RAID_10 "0"
+    elif echo "$_answers" | grep -w "raid5"; then
+      set_option RAID_0 "0"
+      set_option RAID_1 "0"
+      set_option RAID_5 "1"
+      set_option RAID_6 "0"
+      set_option RAID_10 "0"
+    elif echo "$_answers" | grep -w "raid6"; then
+      set_option RAID_0 "0"
+      set_option RAID_1 "0"
+      set_option RAID_5 "0"
+      set_option RAID_6 "1"
+      set_option RAID_10 "0"
+    elif echo "$_answers" | grep -w "raid10"; then
+      set_option RAID_0 "0"
+      set_option RAID_1 "0"
+      set_option RAID_5 "0"
+      set_option RAID_6 "0"
+      set_option RAID_10 "1"
+    fi
+  fi
   RAID_DONE=1
 }
 
