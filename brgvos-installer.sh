@@ -892,13 +892,10 @@ set_lvm_luks() {
 
 # Function for choose partitions for raid software
 menu_raid() {
-  local _desc _radiolist _answers rv
-  # Description for checklist box
+  # Define some local variables
+  local _desc _answers rv
+  # Description for radiolist box
   _desc="Select what Raid Software you wish to define"
-  # Options for radiolist box
-  _radiolist=
-  raid0 "RAID 0" off \
-  raid1 "RAID 1" off
   # Create dialog
   DIALOG --no-tags --radiolist "$_desc" 20 60 2 \
     raid0 "RAID 0" off \
