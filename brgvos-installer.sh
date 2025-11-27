@@ -2349,8 +2349,9 @@ menu() {
   "UserAccount") menu_useraccount && [ -n "$USERLOGIN_DONE" ] && [ -n "$USERPASSWORD_DONE" ] \
     && DEFITEM="BootLoader";;
   "BootLoader") menu_bootloader && [ -n "$BOOTLOADER_DONE" ] && DEFITEM="Partition";;
-  "Partition") menu_partitions && [ -n "$PARTITIONS_DONE" ] && DEFITEM="LVM&LUKS";;
-  "LVM&LUKS") menu_lvm_luks && [ -n "$PARTITIONS_DONE" ] && DEFITEM="Filesystems";;
+  "Partition") menu_partitions && [ -n "$PARTITIONS_DONE" ] && DEFITEM="Raid";;
+  "Raid") menu_raid && [ -n "$RAID_DONE" ] && DEFITEM="LVM&LUKS";;
+  "LVM&LUKS") menu_lvm_luks && [ -n "$LVMLUKS_DONE" ] && DEFITEM="Filesystems";;
   "Filesystems") menu_filesystems && [ -n "$FILESYSTEMS_DONE" ] && DEFITEM="Install";;
   "Install") menu_install;;
   "Exit") DIE;;
