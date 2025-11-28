@@ -952,14 +952,18 @@ menu_raid() {
 # Function to create raid software with loaded parameters from saved configure file
 set_raid() {
   # Define some local variables
-  local _raid _raidpv _raidnbdev
+  local _raid _raidpv _raidnbdev _mdadm
   # Load variables from configure file if exist else define presets
   _raid=$(get_option RAID)
   _raidpv=$(get_option RAIDPV)
+  # Add config file for dracut
+  echo "mdadmconf=\"yes\"" > /etc/dracut.conf.d/md.conf
   # Check if the user choose an option for raid software and physically partitions for the raid
   if [[ -n "$_raid" ]] && [[ -n "$_raidpv" ]]; then
     _raidnbdev=$(wc -w <<< "$_raidpv")
     set -- $_raidpv; mdadm --create --verbose /dev/md0 --level="$_raid" --raid-devices="$_raidnbdev" "$@" >>"$LOG" 2>&1
+    _mdadm=$(mdadm --detail --scan)
+    echo "$_mdadm" >> /etc/mdadm.conf
   fi
 }
 
