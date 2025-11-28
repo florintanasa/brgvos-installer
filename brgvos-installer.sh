@@ -908,38 +908,59 @@ menu_raid() {
   if [ "$rv" -eq 0 ]; then
     _answers=$(cat "$ANSWER")
     if echo "$_answers" | grep -w "raid0"; then
-      set_option RAID_0 "1"
-      set_option RAID_1 "0"
-      set_option RAID_5 "0"
-      set_option RAID_6 "0"
-      set_option RAID_10 "0"
+      set_option RAID "0"
     elif echo "$_answers" | grep -w "raid1"; then
-      set_option RAID_0 "0"
-      set_option RAID_1 "1"
-      set_option RAID_5 "0"
-      set_option RAID_6 "0"
-      set_option RAID_10 "0"
+      set_option RAID "1"
     elif echo "$_answers" | grep -w "raid5"; then
-      set_option RAID_0 "0"
-      set_option RAID_1 "0"
-      set_option RAID_5 "1"
-      set_option RAID_6 "0"
-      set_option RAID_10 "0"
+      set_option RAID "5"
     elif echo "$_answers" | grep -w "raid6"; then
-      set_option RAID_0 "0"
-      set_option RAID_1 "0"
-      set_option RAID_5 "0"
-      set_option RAID_6 "1"
-      set_option RAID_10 "0"
+      set_option RAID "6"
     elif echo "$_answers" | grep -w "raid10"; then
-      set_option RAID_0 "0"
-      set_option RAID_1 "0"
-      set_option RAID_5 "0"
-      set_option RAID_6 "0"
-      set_option RAID_10 "1"
+      set_option RAID "10"
+    fi
+  fi
+  # Read selected RAID option
+  _raid=$(get_option RAID)
+  # Check if the user select RAID
+  if [ "$_raid" -ge 0 ]; then
+    while true; do
+      DIALOG --ok-label "Select" --cancel-label "Done" --extra-button --extra-label "Abort" \
+        --title " Select partition(s) for raid" --menu "$MENULABEL" \
+        ${MENUSIZE} $(show_partitions_filtered "$_dev")
+      rv=$?
+      if [ "$rv" = 0 ]; then # Check if user press Select button
+        _dev+=$(cat "$ANSWER")
+        _dev+=" "
+      elif [[ -z "$_dev" ]] || [[ "$rv" -eq 3 ]]; then # Check if user press Abort or Done buttons without selection
+        return
+      elif [ "$rv" -ne 0 ]; then # Check if user press Done button
+        break
+      fi
+    done
+    # Delete last space
+    _dev=$(echo "$_dev"|awk '{$1=$1;print}')
+    if [[ -n "$_dev" ]]; then\
+      set_option RAIDPV "$_dev"
+      set_raid
+    else
+      set_option RAIDPV ""
     fi
   fi
   RAID_DONE=1
+}
+
+# Function to create raid software with loaded parameters from saved configure file
+set_raid() {
+  # Define some local variables
+  local _raid _raidpv _raidnbdev
+  # Load variables from configure file if exist else define presets
+  _raid=$(get_option RAID)
+  _raidpv=$(get_option RAIDPV)
+  # Check if the user choose an option for raid software and physically partitions for the raid
+  if [[ -n "$_raid" ]] && [[ -n "$_raidpv" ]]; then
+    _raidnbdev=$(wc -w <<< "$_raidpv")
+    set -- $_raidpv; mdadm --create --verbose /dev/md0 --level="$_raid" --raid-devices="$_raidnbdev" "$@" >>"$LOG" 2>&1
+  fi
 }
 
 # Function for chose partition tool for modify partition table
