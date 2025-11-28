@@ -893,7 +893,7 @@ set_lvm_luks() {
 # Function for choose partitions for raid software
 menu_raid() {
   # Define some local variables
-  local _desc _answers rv
+  local _desc _answers _dev _raid rv
   # Description for radiolist box
   _desc="Select what Raid Software you wish to define"
   # Create dialog
