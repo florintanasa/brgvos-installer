@@ -65,6 +65,8 @@
       <w>polkit</w>
       <w>printk</w>
       <w>radiolist</w>
+      <w>raidnbdev</w>
+      <w>raidpv</w>
       <w>rootfound</w>
       <w>rootpassword</w>
       <w>runsvdir</w>
