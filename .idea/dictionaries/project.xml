@@ -40,6 +40,8 @@
       <w>lvname</w>
       <w>lvrootfs</w>
       <w>lvswap</w>
+      <w>mdadm</w>
+      <w>mdadmconf</w>
       <w>mdstat</w>
       <w>menubox</w>
       <w>menulabel</w>
