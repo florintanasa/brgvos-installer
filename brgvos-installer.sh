@@ -962,9 +962,31 @@ set_raid() {
   # Add config file for dracut
   echo "mdadmconf=\"yes\"" > /etc/dracut.conf.d/md.conf
   # Check if the user choose an option for raid software and physically partitions for the raid
-  if [[ -n "$_raid" ]] && [[ -n "$_raidpv" ]]; then
-    _raidnbdev=$(wc -w <<< "$_raidpv")
-    set -- $_raidpv; mdadm --create --verbose /dev/md0 --level="$_raid" --raid-devices="$_raidnbdev" "$@" >>"$LOG" 2>&1
+  if [ -n "$_raid" ] && [ -n "$_raidpv" ]; then
+    _raidnbdev=$(wc -w <<< "$_raidpv") # count numbers of partitions
+    echo "Create RAID $_raid for partitions $_raidpv" >>"$LOG"
+    {
+      if [ "$_raid" -eq 0 ]; then
+        set -- $_raidpv
+        mdadm --create --verbose /dev/md0 --level=0 --write-zeroes --raid-devices="$_raidnbdev" "$@"
+      elif [ "$_raid" -eq 1 ]; then
+        set -- $_raidpv
+        echo -n "y" | mdadm --create --verbose /dev/md0 --level=1 --write-zeroes --raid-devices="$_raidnbdev" "$@"
+      elif [ "$_raid" -eq 4 ]; then
+        set -- $_raidpv
+        mdadm --create --verbose /dev/md0 --level=4 --write-zeroes --raid-devices="$_raidnbdev" "$@"
+      elif [ "$_raid" -eq 5 ]; then
+        set -- $_raidpv
+        mdadm --create --verbose /dev/md0 --level=5 --write-zeroes --raid-devices="$_raidnbdev" "$@"
+      elif [ "$_raid" -eq 6 ]; then
+        set -- $_raidpv
+        mdadm --create --verbose /dev/md0 --level=6 --write-zeroes --raid-devices="$_raidnbdev" "$@"
+      elif [ "$_raid" -eq 10 ]; then
+        set -- $_raidpv
+        mdadm --create --verbose /dev/md0 --level=10 --write-zeroes --raid-devices="$_raidnbdev" "$@"
+      fi
+    } >>"$LOG" 2>&1
+    # Prepare config file /etc/mdadm.conf
     _mdadm=$(mdadm --detail --scan)
     echo "$_mdadm" >> /etc/mdadm.conf
   fi
