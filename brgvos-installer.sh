@@ -971,20 +971,24 @@ set_raid() {
         mdadm --create --verbose /dev/md0 --level=0 --write-zeroes --raid-devices="$_raidnbdev" "$@"
       elif [ "$_raid" -eq 1 ]; then
         set -- $_raidpv
-	# Answer yes to next 2 prompts (enable write-indent bitmap and to warning for --metadata v1.x)
+	# Answer yes to the next 2 prompts (enable write-indent bitmap and to warning for --metadata v1.x)
         echo -e "y\ny" | mdadm --create --verbose /dev/md0 --level=1 --write-zeroes --raid-devices="$_raidnbdev" "$@"
       elif [ "$_raid" -eq 4 ]; then
         set -- $_raidpv
-        mdadm --create --verbose /dev/md0 --level=4 --write-zeroes --raid-devices="$_raidnbdev" "$@"
+        # Answer yes to the next prompts (enable write-indent bitmap)
+        echo -n "y" | mdadm --create --verbose /dev/md0 --level=4 --write-zeroes --raid-devices="$_raidnbdev" "$@"
       elif [ "$_raid" -eq 5 ]; then
         set -- $_raidpv
-        mdadm --create --verbose /dev/md0 --level=5 --write-zeroes --raid-devices="$_raidnbdev" "$@"
+        # Answer yes to the next prompts (enable write-indent bitmap)
+        echo -n "y" | mdadm --create --verbose /dev/md0 --level=5 --write-zeroes --raid-devices="$_raidnbdev" "$@"
       elif [ "$_raid" -eq 6 ]; then
         set -- $_raidpv
-        mdadm --create --verbose /dev/md0 --level=6 --write-zeroes --raid-devices="$_raidnbdev" "$@"
+        # Answer yes to the next prompts (enable write-indent bitmap)
+        echo -n "y" | mdadm --create --verbose /dev/md0 --level=6 --write-zeroes --raid-devices="$_raidnbdev" "$@"
       elif [ "$_raid" -eq 10 ]; then
         set -- $_raidpv
-        mdadm --create --verbose /dev/md0 --level=10 --write-zeroes --raid-devices="$_raidnbdev" "$@"
+        # Answer yes to the next prompts (enable write-indent bitmap)
+        echo -n "y" | mdadm --create --verbose /dev/md0 --level=10 --write-zeroes --raid-devices="$_raidnbdev" "$@"
       fi
     } >>"$LOG" 2>&1
     # Prepare config file /etc/mdadm.conf
