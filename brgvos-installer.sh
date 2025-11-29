@@ -900,6 +900,7 @@ menu_raid() {
   DIALOG --no-tags --radiolist "$_desc" 20 60 2 \
     raid0 "RAID 0" off \
     raid1 "RAID 1" off \
+    raid4 "RAID 4" off \
     raid5 "RAID 5" off \
     raid6 "RAID 6" off \
     raid10 "RAID 10" off
@@ -911,6 +912,8 @@ menu_raid() {
       set_option RAID "0"
     elif echo "$_answers" | grep -w "raid1"; then
       set_option RAID "1"
+    elif echo "$_answers" | grep -w "raid4"; then
+      set_option RAID "4"
     elif echo "$_answers" | grep -w "raid5"; then
       set_option RAID "5"
     elif echo "$_answers" | grep -w "raid6"; then
