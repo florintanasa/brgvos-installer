@@ -971,7 +971,8 @@ set_raid() {
         mdadm --create --verbose /dev/md0 --level=0 --write-zeroes --raid-devices="$_raidnbdev" "$@"
       elif [ "$_raid" -eq 1 ]; then
         set -- $_raidpv
-        echo -n "y" | mdadm --create --verbose /dev/md0 --level=1 --write-zeroes --raid-devices="$_raidnbdev" "$@"
+	# Answer yes to next 2 prompts (enable write-indent bitmap and to warning for --metadata v1.x)
+        echo -e "y\ny" | mdadm --create --verbose /dev/md0 --level=1 --write-zeroes --raid-devices="$_raidnbdev" "$@"
       elif [ "$_raid" -eq 4 ]; then
         set -- $_raidpv
         mdadm --create --verbose /dev/md0 --level=4 --write-zeroes --raid-devices="$_raidnbdev" "$@"
