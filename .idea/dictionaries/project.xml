@@ -25,6 +25,7 @@
       <w>fssize</w>
       <w>fstype</w>
       <w>gbytes</w>
+      <w>homehost</w>
       <w>iface</w>
       <w>initramfs</w>
       <w>inputbox</w>
