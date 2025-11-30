@@ -955,41 +955,47 @@ menu_raid() {
 # Function to create raid software with loaded parameters from saved configure file
 set_raid() {
   # Define some local variables
-  local _raid _raidpv _raidnbdev _mdadm _hostname
+  local _raid _raidpv _raidnbdev _mdadm _hostname _index
   # Load variables from configure file if exist else define presets
   _raid=$(get_option RAID)
   _raidpv=$(get_option RAIDPV)
   _hostname=$(get_option HOSTNAME)
-  # Add config file for dracut
-  echo "mdadmconf=\"yes\"" > /etc/dracut.conf.d/md.conf
+  _index=$(get_option INDEXRAID)
+  # Add config file for dracut if not exist
+  if [ ! -f /etc/dracut.conf.d/md.conf ]; then
+    echo "mdadmconf=\"yes\"" > /etc/dracut.conf.d/md.conf
+  fi
   # Check if the user choose an option for raid software and physically partitions for the raid
   if [ -n "$_raid" ] && [ -n "$_raidpv" ]; then
+    [ -z "$_index" ] && _index=0  # Initialize an index for unique naming raid block if not exist saved in configure file
     _raidnbdev=$(wc -w <<< "$_raidpv") # count numbers of partitions
     echo "Create RAID $_raid for partitions $_raidpv" >>"$LOG"
     {
       if [ "$_raid" -eq 0 ]; then
-        set -- $_raidpv; mdadm --create --verbose /dev/md0 --level=0 --write-zeroes --homehost="$_hostname" \
+        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=0 --write-zeroes --homehost="$_hostname" \
         --raid-devices="$_raidnbdev" "$@"
       elif [ "$_raid" -eq 1 ]; then
-        set -- $_raidpv; mdadm --create --verbose /dev/md0 --level=1 --write-zeroes --homehost="$_hostname" \
+        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=1 --write-zeroes --homehost="$_hostname" \
         --bitmap='internal' --metadata=1.2 --raid-devices="$_raidnbdev" "$@"
       elif [ "$_raid" -eq 4 ]; then
-        set -- $_raidpv; mdadm --create --verbose /dev/md0 --level=4 --write-zeroes --homehost="$_hostname" \
+        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=4 --write-zeroes --homehost="$_hostname" \
         --bitmap='internal' --raid-devices="$_raidnbdev" "$@"
       elif [ "$_raid" -eq 5 ]; then
-        set -- $_raidpv; mdadm --create --verbose /dev/md0 --level=5 --write-zeroes --homehost="$_hostname" \
+        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=5 --write-zeroes --homehost="$_hostname" \
         --bitmap='internal' --raid-devices="$_raidnbdev" "$@"
       elif [ "$_raid" -eq 6 ]; then
-        set -- $_raidpv; mdadm --create --verbose /dev/md0 --level=6 --write-zeroes --homehost="$_hostname" \
+        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=6 --write-zeroes --homehost="$_hostname" \
         --bitmap='internal' --raid-devices="$_raidnbdev" "$@"
       elif [ "$_raid" -eq 10 ]; then
-        set -- $_raidpv; mdadm --create --verbose /dev/md0 --level=10 --write-zeroes --homehost="$_hostname" \
+        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=10 --write-zeroes --homehost="$_hostname" \
         --bitmap='internal' --raid-devices="$_raidnbdev" "$@"
       fi
     } >>"$LOG" 2>&1
     # Prepare config file /etc/mdadm.conf
     _mdadm=$(mdadm --detail --scan)
-    echo "$_mdadm" >> /etc/mdadm.conf
+    echo "$_mdadm" > /etc/mdadm.conf
+    _index=$((_index + 1))  # Increment the index for the next raid block
+    set_option INDEXRAID "$_index" # save in configure file the last unused index to be used for next set_raid appellation
   fi
 }
 
