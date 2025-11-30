@@ -955,10 +955,11 @@ menu_raid() {
 # Function to create raid software with loaded parameters from saved configure file
 set_raid() {
   # Define some local variables
-  local _raid _raidpv _raidnbdev _mdadm
+  local _raid _raidpv _raidnbdev _mdadm _hostname
   # Load variables from configure file if exist else define presets
   _raid=$(get_option RAID)
   _raidpv=$(get_option RAIDPV)
+  _hostname=$(get_option HOSTNAME)
   # Add config file for dracut
   echo "mdadmconf=\"yes\"" > /etc/dracut.conf.d/md.conf
   # Check if the user choose an option for raid software and physically partitions for the raid
