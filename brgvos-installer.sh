@@ -846,7 +846,7 @@ set_lvm_luks() {
         set -- $_pv; vgcreate "$_vgname" "$@" # Create volume group
       fi
       # Check if user choose to use LVM with encrypt for devices
-      if [ "$_crypt" = 1 ];then
+      if [ "$_crypt" = 1 ]; then
         set -- $_cd; pvcreate "$@" # Create physical volume
         set -- $_cd; vgcreate "$_vgname" "$@" # Create volume group
       fi
