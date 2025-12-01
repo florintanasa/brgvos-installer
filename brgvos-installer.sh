@@ -955,7 +955,7 @@ menu_raid() {
 # Function to create raid software with loaded parameters from saved configure file
 set_raid() {
   # Define some local variables
-  local _raid _raidpv _raidnbdev _mdadm _hostname _index
+  local _raid _raidpv _raidnbdev _mdadm _hostname _index _raid_uuid
   # Load variables from configure file if exist else define presets
   _raid=$(get_option RAID)
   _raidpv=$(get_option RAIDPV)
@@ -994,6 +994,9 @@ set_raid() {
     # Prepare config file /etc/mdadm.conf
     _mdadm=$(mdadm --detail --scan)
     echo "$_mdadm" > /etc/mdadm.conf
+    # Prepare variable used in grub for kernel command line
+    _raid_uuid=$(sudo mdadm --detail /dev/md${_index} | grep UUID | awk '{print $NF}') # Got UUID for RAID block
+    RD_MD_UUID+="rd.md.uuid=$_raid_uuid " # Global variable used in set_boot function
     _index=$((_index + 1))  # Increment the index for the next raid block
     set_option INDEXRAID "$_index" # save in configure file the last unused index to be used for next set_raid appellation
   fi
@@ -1448,10 +1451,10 @@ set_bootloader() {
   chroot $TARGETDIR sed -i 's/GRUB_DISTRIBUTOR="Void"/GRUB_DISTRIBUTOR="BRGV-OS"/g' /etc/default/grub >>$LOG 2>&1
   if [ "$bool" -eq 1 ] && [ "$_boot" -eq 0 ]; then # For full encrypted installation
     echo "Prepare parameters on Grub for crypted device(s) ${bold}${luks_devices[*]}${reset}"  >>$LOG
-    chroot $TARGETDIR sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4\"/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4 ${_rd_luks_uuid} cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash\"/g" /etc/default/grub >>$LOG 2>&1
+    chroot $TARGETDIR sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4\"/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4 ${RD_MD_UUID} ${_rd_luks_uuid} cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash\"/g" /etc/default/grub >>$LOG 2>&1
   else # For not full encrypted installation
     echo "Prepare parameters on Grub for device ${bold}$ROOTFS${reset}"  >>$LOG
-    chroot $TARGETDIR sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4\"/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4 ${_rd_luks_uuid} quiet splash\"/g" /etc/default/grub >>$LOG 2>&1
+    chroot $TARGETDIR sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4\"/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4 ${RD_MD_UUID} ${_rd_luks_uuid} quiet splash\"/g" /etc/default/grub >>$LOG 2>&1
   fi
   chroot $TARGETDIR sed -i '$aGRUB_DISABLE_OS_PROBER=false' /etc/default/grub >>$LOG 2>&1
   echo "Running grub-mkconfig on ${bold}$TARGETDIR${reset}..." >>"$LOG"
