@@ -206,6 +206,11 @@ DIE() {
   set_option INDEX "" # clear INDEX value
   set_option DEVCRYPT "" # clear DEVCRYPT value
   set_option CRYPTS "" # clear CRYPTS value
+  set_option BOOTLOADER "" # clear BOOTLOADER value
+  set_option TEXTCONSOLE "" # clear TEXTCONSOLE value
+  set_option RAID "" # clear RAID value
+  set_option RAIDPV "" # clear RAIDPV value
+  set_option INDEXRAID "" # clear INDEXRAID value
   rm -f "$ANSWER" "$TARGET_FSTAB" "$TARGET_SERVICES"
   # re-enable printk
   if [ -w /proc/sys/kernel/printk ]; then
