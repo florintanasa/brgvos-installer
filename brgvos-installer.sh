@@ -974,11 +974,16 @@ set_raid() {
   if [ -n "$_raid" ] && [ -n "$_raidpv" ]; then
     [ -z "$_index" ] && _index=0  # Initialize an index for unique naming raid block if not exist saved in configure file
     _raidnbdev=$(wc -w <<< "$_raidpv") # count numbers of partitions
-    echo "Create RAID $_raid for partitions $_raidpv" >>"$LOG"
+    echo "Create RAID $_raid for $_raidpv" >>"$LOG"
     {
       if [ "$_raid" -eq 0 ]; then
-        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=0 --write-zeroes --homehost="$_hostname" \
-        --raid-devices="$_raidnbdev" "$@"
+        if echo "$_raidpv" | grep -q md; then # Check if used a raid, if yes do not write zero again
+          set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=0 --homehost="$_hostname" \
+            --raid-devices="$_raidnbdev" "$@"
+        else
+          set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=0 --write-zeroes --homehost="$_hostname" \
+          --raid-devices="$_raidnbdev" "$@"
+        fi
       elif [ "$_raid" -eq 1 ]; then
         set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=1 --write-zeroes --homehost="$_hostname" \
         --bitmap='internal' --metadata=1.2 --raid-devices="$_raidnbdev" "$@"
