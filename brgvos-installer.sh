@@ -1981,7 +1981,7 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       elif [ "$fstype" = "f2fs" ]; then
         options="defaults"
       elif [ "$fstype" = "vfat" ]; then
-        options="defaults, noauto"
+        options="defaults,noauto"
       fi
       echo "Options, for filesystem ${bold}$fstype${reset}, used for mount ${bold}$mntpt${reset} in fstab
        is ${bold}$options${reset} on ${bold}HDD${reset}" >>"$LOG"
@@ -1995,7 +1995,7 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       elif [ "$fstype" = "f2fs" ]; then
         options="defaults"
       elif [ "$fstype" = "vfat" ]; then
-        options="defaults, noauto"
+        options="defaults,noauto"
       fi
       echo "Options, for filesystem ${bold}$fstype${reset}, used for mount ${bold}$mntpt${reset} in fstab
        is ${bold}$options${reset} on ${bold}SSD${reset}" >>"$LOG"
