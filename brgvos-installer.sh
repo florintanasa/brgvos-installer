@@ -1715,12 +1715,13 @@ as FAT32, mountpoint /boot/efi and at least with 100MB of size." ${MSGBOXSIZE}
 create_filesystems() {
   # Define some variables local
   local mnts dev mntpt fstype fspassno mkfs size rv uuid MKFS mem_total swap_need disk_name disk_type ROOT_UUID SWAP_UUID
-  local _lvm _crypt _vgname _lvswap _lvrootfs _home _basename_mntpt _devcrypt
+  local _lvm _crypt _vgname _lvswap _lvrootfs _home _basename_mntpt _devcrypt _raid
   # Initialize some local variables
   disk_type=0
   _lvm=$(get_option LVM)
   _crypt=$(get_option CRYPTO_LUKS)
   _devcrypt=$(get_option DEVCRYPT)
+  _raid=$(get_option RAID)
   # Check if is defined mount device for /home
   [ -n "$(grep -E '/home .*' /tmp/.brgvos-installer.conf)" ] && _home=1 || _home=0
   # Output all defined MOUNTPOINT from configure file
@@ -1981,7 +1982,11 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       elif [ "$fstype" = "f2fs" ]; then
         options="defaults"
       elif [ "$fstype" = "vfat" ]; then
-        options="defaults,noauto"
+        if [ -n "$_raid" ]; then
+          options="defaults,noauto"
+        else
+          options="defaults"
+        fi
       fi
       echo "Options, for filesystem ${bold}$fstype${reset}, used for mount ${bold}$mntpt${reset} in fstab
        is ${bold}$options${reset} on ${bold}HDD${reset}" >>"$LOG"
@@ -1995,7 +2000,11 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       elif [ "$fstype" = "f2fs" ]; then
         options="defaults"
       elif [ "$fstype" = "vfat" ]; then
-        options="defaults,noauto"
+        if [ -n "$_raid" ]; then
+          options="defaults,noauto"
+        else
+          options="defaults"
+        fi
       fi
       echo "Options, for filesystem ${bold}$fstype${reset}, used for mount ${bold}$mntpt${reset} in fstab
        is ${bold}$options${reset} on ${bold}SSD${reset}" >>"$LOG"
