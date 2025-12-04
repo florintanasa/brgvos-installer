@@ -2040,7 +2040,7 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
     if [ "$fstype" = "f2fs" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "xfs" ]; then
       fspassno=0 # Not use fsck at boot for f2fs, btrfs and xfs these have their check utility
     elif [ "$mntpt" = "/boot/efi" ]; then
-      fspassno=0 # Set do not check fsck at boot because is not auto-mounted
+      fspassno=1 # Set to check fsck at boot this device first (to be mounted /boot/efi)
     else
       fspassno=2 # Set to check fsck at boot after first device
     fi
