@@ -2055,8 +2055,9 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       elif [ "$fstype" = "f2fs" ]; then
         options="defaults"
       elif [ "$fstype" = "vfat" ]; then
-        if [ -n "$_raid" ]; then
+        if [ -n "$_raid" ] && [ "$mntpt" = "/boot/efi" ]; then # Check if was selected RAID and set noauto for /boot/efi for RAID
           options="defaults,noauto"
+          fspassno=0 # Set do not check fsck at boot because is not auto-mounted
         else
           options="defaults"
         fi
@@ -2073,8 +2074,9 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       elif [ "$fstype" = "f2fs" ]; then
         options="defaults"
       elif [ "$fstype" = "vfat" ]; then
-        if [ -n "$_raid" ]; then
+        if [ -n "$_raid" ] && [ "$mntpt" = "/boot/efi" ]; then # Check if was selected RAID and set noauto for /boot/efi for RAID
           options="defaults,noauto"
+          fspassno=0 # Set do not check fsck at boot because is not auto-mounted
         else
           options="defaults"
         fi
