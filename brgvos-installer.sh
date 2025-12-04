@@ -32,48 +32,140 @@ dialogRcFile="$HOME/.dialogrc"
 # Function to create file .dialogrc
 sh_create_dialogrc() {
   cat > "$dialogRcFile" <<-EOF
-screen_color = (white,black,off)
-dialog_color = (white,black,off)
-title_color = (cyan,black,on)
-border_color = dialog_color
-shadow_color = (black,black,on)
-button_inactive_color = dialog_color
-button_key_inactive_color = dialog_color
-button_label_inactive_color = dialog_color
-button_active_color = (white,cyan,on)
-button_key_active_color = button_active_color
-button_label_active_color = (black,cyan,on)
-tag_key_selected_color = (white,cyan,on)
-item_selected_color = tag_key_selected_color
-form_text_color = (BLUE,black,ON)
-form_item_readonly_color = (green,black,on)
-itemhelp_color = (white,cyan,off)
-inputbox_color = dialog_color
-inputbox_border_color = dialog_color
-searchbox_color = dialog_color
-searchbox_title_color = title_color
-searchbox_border_color = border_color
-position_indicator_color = title_color
-menubox_color = dialog_color
-menubox_border_color = border_color
-item_color = dialog_color
-tag_color = title_color
-tag_selected_color = button_label_active_color
-tag_key_color = button_key_inactive_color
-check_color = dialog_color
-check_selected_color = button_active_color
-uarrow_color = screen_color
-darrow_color = screen_color
-form_active_text_color = button_active_color
-gauge_color = title_color
-border2_color = dialog_color
-searchbox_border2_color = dialog_color
-menubox_border2_color = dialog_color
-separate_widget = ''
+# Set aspect-ration.
+aspect = 0
+
+# Set separator (for multiple widgets output).
+separate_widget = ""
+
+# Set tab-length (for textbox tab-conversion).
 tab_len = 0
-visit_items = off
-use_shadow = off
-use_colors = on
+
+# Make tab-traversal for checklist, etc., include the list.
+visit_items = OFF
+
+# Show scrollbar in dialog boxes?
+use_scrollbar = OFF
+
+# Shadow dialog boxes? This also turns on color.
+use_shadow = OFF
+
+# Turn color support ON or OFF
+use_colors = ON
+
+# Screen color
+screen_color = (CYAN,BLACK,ON)
+
+# Shadow color
+shadow_color = (RED,RED,ON)
+
+# Dialog box color
+dialog_color = (CYAN,BLACK,ON)
+
+# Dialog box title color
+title_color = (WHITE,BLACK,ON)
+
+# Dialog box border color
+border_color = (CYAN,BLACK,ON)
+
+# Active button color
+button_active_color = (BLACK,CYAN,OFF)
+
+# Inactive button color
+button_inactive_color = screen_color
+
+# Active button key color
+button_key_active_color = button_active_color
+
+# Inactive button key color
+button_key_inactive_color = (CYAN,BLACK,ON)
+
+# Active button label color
+button_label_active_color = (BLACK,CYAN,OFF)
+
+# Inactive button label color
+button_label_inactive_color = (WHITE,BLACK,ON)
+
+# Input box color
+inputbox_color = screen_color
+
+# Input box border color
+inputbox_border_color = screen_color
+
+# Search box color
+searchbox_color = screen_color
+
+# Search box title color
+searchbox_title_color = (WHITE,BLACK,OFF)
+
+# Search box border color
+searchbox_border_color = border_color
+
+# File position indicator color
+position_indicator_color = (WHITE,BLACK,OFF)
+
+# Menu box color
+menubox_color = screen_color
+
+# Menu box border color
+menubox_border_color = screen_color
+
+# Item color
+item_color = screen_color
+
+# Selected item color
+item_selected_color = (BLACK,CYAN,OFF)
+
+# Tag color
+tag_color = (WHITE,BLACK,OFF)
+
+# Selected tag color
+tag_selected_color = button_label_active_color
+
+# Tag key color
+tag_key_color = button_key_inactive_color
+
+# Selected tag key color
+tag_key_selected_color = (WHITE,CYAN,ON)
+
+# Check box color
+check_color = screen_color
+
+# Selected check box color
+check_selected_color = button_active_color
+
+# Up arrow color
+uarrow_color = (YELLOW,BLACK,ON)
+
+# Down arrow color
+darrow_color = uarrow_color
+
+# Item help-text color
+itemhelp_color = (WHITE,BLACK,OFF)
+
+# Active form text color
+form_active_text_color = button_active_color
+
+# Form text color
+form_text_color = (WHITE,CYAN,ON)
+
+# Readonly form item color
+form_item_readonly_color = (CYAN,WHITE,ON)
+
+# Dialog box gauge color
+gauge_color = (WHITE,BLACK,OFF)
+
+# Dialog box border2 color
+border2_color = screen_color
+
+# Input box border2 color
+inputbox_border2_color = screen_color
+
+# Search box border2 color
+searchbox_border2_color = screen_color
+
+# Menu box border2 color
+menubox_border2_color = screen_color
 EOF
 }
 
