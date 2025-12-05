@@ -796,6 +796,8 @@ menu_lvm_luks() {
     else
       set_option CRYPTO_LUKS "0"
     fi
+  elif [ "$rv" -eq 1 ]; then # Verify if the user not accept the dialog
+    return
   fi
   # Input box is available only if LVM and/or CRYPTO_LUKS was selected
   _lvm=$(get_option LVM)
@@ -1062,7 +1064,9 @@ ${BOLD}${MAGENTA}RAID ${RED}60 ${YELLOW}(Double Parity + Stripe)${RESET}\n
 - Write speed gain 1x\n
 - Disk space efficiency 50%\n
 " 23 80
-  if [ $? -eq 0 ]; then
+  # Verify if the user accept the dialog
+  rv=$?
+  if [ "$rv" -eq 0 ]; then
     # Create dialog
     DIALOG --no-tags --radiolist "$_desc" 20 60 2 \
       raid0 "RAID 0" on \
@@ -1088,6 +1092,8 @@ ${BOLD}${MAGENTA}RAID ${RED}60 ${YELLOW}(Double Parity + Stripe)${RESET}\n
       elif echo "$_answers" | grep -w "raid10"; then
         set_option RAID "10"
       fi
+    elif [ "$rv" -eq 1 ]; then # Verify if the user not accept the dialog
+      return
     fi
     # Read selected RAID option
     _raid=$(get_option RAID)
