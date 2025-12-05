@@ -996,7 +996,7 @@ menu_raid() {
   # Description for radiolist box
   _desc="Select what Raid Software you wish to define"
   DIALOG --title "RAID software" --msgbox "\n
-${BOLD}${RED}ATTENTION:\n
+${BOLD}${RED}WARNING:\n
 When a partition is added to an existing RAID array, the data on that partition is lost because the RAID subsystem
 zeroes the device before incorporating it.\n
 The ${BLUE}'/boot/efi' ${RED}partition, only for the RAID configuration, has the ${BLUE}'noauto' ${RED}option in
