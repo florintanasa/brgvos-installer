@@ -25,6 +25,7 @@
       <w>fssize</w>
       <w>fstype</w>
       <w>gbytes</w>
+      <w>homehost</w>
       <w>iface</w>
       <w>initramfs</w>
       <w>inputbox</w>
@@ -36,9 +37,12 @@
       <w>lpadmin</w>
       <w>lvbrgvos</w>
       <w>lvhome</w>
+      <w>lvmluks</w>
       <w>lvname</w>
       <w>lvrootfs</w>
       <w>lvswap</w>
+      <w>mdadm</w>
+      <w>mdadmconf</w>
       <w>mdstat</w>
       <w>menubox</w>
       <w>menulabel</w>
@@ -63,6 +67,9 @@
       <w>plugdev</w>
       <w>polkit</w>
       <w>printk</w>
+      <w>radiolist</w>
+      <w>raidnbdev</w>
+      <w>raidpv</w>
       <w>rootfound</w>
       <w>rootpassword</w>
       <w>runsvdir</w>

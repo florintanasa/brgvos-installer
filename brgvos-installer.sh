@@ -32,48 +32,140 @@ dialogRcFile="$HOME/.dialogrc"
 # Function to create file .dialogrc
 sh_create_dialogrc() {
   cat > "$dialogRcFile" <<-EOF
-screen_color = (white,black,off)
-dialog_color = (white,black,off)
-title_color = (cyan,black,on)
-border_color = dialog_color
-shadow_color = (black,black,on)
-button_inactive_color = dialog_color
-button_key_inactive_color = dialog_color
-button_label_inactive_color = dialog_color
-button_active_color = (white,cyan,on)
-button_key_active_color = button_active_color
-button_label_active_color = (black,cyan,on)
-tag_key_selected_color = (white,cyan,on)
-item_selected_color = tag_key_selected_color
-form_text_color = (BLUE,black,ON)
-form_item_readonly_color = (green,black,on)
-itemhelp_color = (white,cyan,off)
-inputbox_color = dialog_color
-inputbox_border_color = dialog_color
-searchbox_color = dialog_color
-searchbox_title_color = title_color
-searchbox_border_color = border_color
-position_indicator_color = title_color
-menubox_color = dialog_color
-menubox_border_color = border_color
-item_color = dialog_color
-tag_color = title_color
-tag_selected_color = button_label_active_color
-tag_key_color = button_key_inactive_color
-check_color = dialog_color
-check_selected_color = button_active_color
-uarrow_color = screen_color
-darrow_color = screen_color
-form_active_text_color = button_active_color
-gauge_color = title_color
-border2_color = dialog_color
-searchbox_border2_color = dialog_color
-menubox_border2_color = dialog_color
-separate_widget = ''
+# Set aspect-ration.
+aspect = 0
+
+# Set separator (for multiple widgets output).
+separate_widget = ""
+
+# Set tab-length (for textbox tab-conversion).
 tab_len = 0
-visit_items = off
-use_shadow = off
-use_colors = on
+
+# Make tab-traversal for checklist, etc., include the list.
+visit_items = OFF
+
+# Show scrollbar in dialog boxes?
+use_scrollbar = OFF
+
+# Shadow dialog boxes? This also turns on color.
+use_shadow = OFF
+
+# Turn color support ON or OFF
+use_colors = ON
+
+# Screen color
+screen_color = (CYAN,BLACK,ON)
+
+# Shadow color
+shadow_color = (RED,RED,ON)
+
+# Dialog box color
+dialog_color = (CYAN,BLACK,ON)
+
+# Dialog box title color
+title_color = (WHITE,BLACK,ON)
+
+# Dialog box border color
+border_color = (CYAN,BLACK,ON)
+
+# Active button color
+button_active_color = (BLACK,CYAN,OFF)
+
+# Inactive button color
+button_inactive_color = screen_color
+
+# Active button key color
+button_key_active_color = button_active_color
+
+# Inactive button key color
+button_key_inactive_color = (CYAN,BLACK,ON)
+
+# Active button label color
+button_label_active_color = (BLACK,CYAN,OFF)
+
+# Inactive button label color
+button_label_inactive_color = (WHITE,BLACK,ON)
+
+# Input box color
+inputbox_color = screen_color
+
+# Input box border color
+inputbox_border_color = screen_color
+
+# Search box color
+searchbox_color = screen_color
+
+# Search box title color
+searchbox_title_color = (WHITE,BLACK,OFF)
+
+# Search box border color
+searchbox_border_color = border_color
+
+# File position indicator color
+position_indicator_color = (WHITE,BLACK,OFF)
+
+# Menu box color
+menubox_color = screen_color
+
+# Menu box border color
+menubox_border_color = screen_color
+
+# Item color
+item_color = screen_color
+
+# Selected item color
+item_selected_color = (BLACK,CYAN,OFF)
+
+# Tag color
+tag_color = (WHITE,BLACK,OFF)
+
+# Selected tag color
+tag_selected_color = button_label_active_color
+
+# Tag key color
+tag_key_color = button_key_inactive_color
+
+# Selected tag key color
+tag_key_selected_color = (WHITE,CYAN,ON)
+
+# Check box color
+check_color = screen_color
+
+# Selected check box color
+check_selected_color = button_active_color
+
+# Up arrow color
+uarrow_color = (YELLOW,BLACK,ON)
+
+# Down arrow color
+darrow_color = uarrow_color
+
+# Item help-text color
+itemhelp_color = (WHITE,BLACK,OFF)
+
+# Active form text color
+form_active_text_color = button_active_color
+
+# Form text color
+form_text_color = (WHITE,CYAN,ON)
+
+# Readonly form item color
+form_item_readonly_color = (CYAN,WHITE,ON)
+
+# Dialog box gauge color
+gauge_color = (WHITE,BLACK,OFF)
+
+# Dialog box border2 color
+border2_color = screen_color
+
+# Input box border2 color
+inputbox_border2_color = screen_color
+
+# Search box border2 color
+searchbox_border2_color = screen_color
+
+# Menu box border2 color
+menubox_border2_color = screen_color
 EOF
 }
 
@@ -101,6 +193,8 @@ USERGROUPS_DONE=
 USERACCOUNT_DONE=
 BOOTLOADER_DONE=
 PARTITIONS_DONE=
+RAID_DONE=
+LVMLUKS_DONE=
 NETWORK_DONE=
 FILESYSTEMS_DONE=
 MIRROR_DONE=
@@ -204,6 +298,11 @@ DIE() {
   set_option INDEX "" # clear INDEX value
   set_option DEVCRYPT "" # clear DEVCRYPT value
   set_option CRYPTS "" # clear CRYPTS value
+  set_option BOOTLOADER "" # clear BOOTLOADER value
+  set_option TEXTCONSOLE "" # clear TEXTCONSOLE value
+  set_option RAID "" # clear RAID value
+  set_option RAIDPV "" # clear RAIDPV value
+  set_option INDEXRAID "" # clear INDEXRAID value
   rm -f "$ANSWER" "$TARGET_FSTAB" "$TARGET_SERVICES"
   # re-enable printk
   if [ -w /proc/sys/kernel/printk ]; then
@@ -697,6 +796,8 @@ menu_lvm_luks() {
     else
       set_option CRYPTO_LUKS "0"
     fi
+  elif [ "$rv" -eq 1 ]; then # Verify if the user not accept the dialog
+    return
   fi
   # Input box is available only if LVM and/or CRYPTO_LUKS was selected
   _lvm=$(get_option LVM)
@@ -781,6 +882,7 @@ menu_lvm_luks() {
     exec 3>&-
   fi
   #set_lvm_luks
+  LVMLUKS_DONE=1
 }
 
 # Function to create lvm and/or luks with loaded parameters from saved configure file
@@ -843,7 +945,7 @@ set_lvm_luks() {
         set -- $_pv; vgcreate "$_vgname" "$@" # Create volume group
       fi
       # Check if user choose to use LVM with encrypt for devices
-      if [ "$_crypt" = 1 ];then
+      if [ "$_crypt" = 1 ]; then
         set -- $_cd; pvcreate "$@" # Create physical volume
         set -- $_cd; vgcreate "$_vgname" "$@" # Create volume group
       fi
@@ -884,6 +986,200 @@ set_lvm_luks() {
         echo "$_lvrootfs (MB)=$_slvrootfs_MB"
       fi
     } >>"$LOG" 2>&1
+  fi
+}
+
+# Function for choose partitions for raid software
+menu_raid() {
+  # Define some local variables
+  local _desc _answers _dev _raid rv
+  # Description for radiolist box
+  _desc="Select what Raid Software you wish to define"
+  DIALOG --title "RAID software" --msgbox "\n
+${BOLD}${RED}ATTENTION:\n
+When a partition is added to an existing RAID array, the data on that partition is lost because the RAID subsystem
+zeroes the device before incorporating it.\n
+The ${BLUE}'/boot/efi' ${RED}partition, only for the RAID configuration, has the ${BLUE}'noauto' ${RED}option in
+${BLUE}'/etc/fstab'${RED}, so it is not mounted automatically at boot. Mount it manually only when needed (e.g., before
+running update, dracut etc.).${RESET}
+\n
+\n
+${BOLD}RAID enhances storage performance, boosts read/write speed, provides data redundancy, enables fault
+tolerance, minimizes downtime, and protects against data loss, making systems more reliable and efficient.${RESET}\n
+\n
+\n
+${BOLD}${MAGENTA}RAID ${RED}0 ${YELLOW}(Stripe)${RESET}\n
+- Disks/partitions (DP) = minimum 2\n
+- Fault tolerance 0\n
+- Read speed gain 2x\n
+- Write speed gain 2x\n
+- Disk space efficiency 100%\n
+\n
+${BOLD}${MAGENTA}RAID ${RED}1 ${YELLOW}(Mirror)${RESET}\n
+- Disks/partitions  2\n
+- Fault tolerance 1\n
+- Read speed gain 2x\n
+- Write speed gain 1x\n
+- Disk space efficiency 50%\n
+\n
+${BOLD}${MAGENTA}RAID ${RED}4 ${YELLOW}(Stripe + Parity)${RESET}\n
+- Disks/partitions (DP) = minimum 3\n
+- Fault tolerance 1\n
+- Read speed gain 2x\n
+- Write speed gain 1x\n
+- Disk space efficiency > 66%\n
+\n
+${BOLD}${MAGENTA}RAID ${RED}5 ${YELLOW}(Stripe + Parity)${RESET}\n
+- Disks/partitions (DP) = minimum 3\n
+- Fault tolerance 1\n
+- Read speed gain (DP)x\n
+- Write speed gain 1x\n
+- Disk space efficiency > 66%\n
+\n
+${BOLD}${MAGENTA}RAID ${RED}6 ${YELLOW}(Stripe + Double Parity)${RESET}\n
+- Disks/partitions (DP) = minimum 4\n
+- Fault tolerance 2\n
+- Read speed gain (DP)x\n
+- Write speed gain 1x\n
+- Disk space efficiency >= 50%\n
+\n
+${BOLD}${MAGENTA}RAID ${RED}10 ${YELLOW}(Striped Mirrors)${RESET}\n
+- Disks/partitions (DP) = minimum 4\n
+- Fault tolerance 1 to (DP/2)\n
+- Read speed gain (DP)x\n
+- Write speed gain (DP/2)x\n
+- Disk space efficiency 50%\n
+\n
+${BOLD}${MAGENTA}RAID ${RED}50 ${YELLOW}(Parity + Stripe)${RESET}\n
+- Disks/partitions (DP) = minimum 6\n
+- Fault tolerance 1 per group\n
+- Read speed gain (DP-2)x\n
+- Write speed gain 1x\n
+- Disk space efficiency > 66%\n
+\n
+${BOLD}${MAGENTA}RAID ${RED}60 ${YELLOW}(Double Parity + Stripe)${RESET}\n
+- Disks/partitions (DP) = minimum 8\n
+- Fault tolerance 2 per group\n
+- Read speed gain (DP-2)x\n
+- Write speed gain 1x\n
+- Disk space efficiency 50%\n
+" 23 80
+  # Verify if the user accept the dialog
+  rv=$?
+  if [ "$rv" -eq 0 ]; then
+    # Create dialog
+    DIALOG --no-tags --radiolist "$_desc" 20 60 2 \
+      raid0 "RAID 0" on \
+      raid1 "RAID 1" off \
+      raid4 "RAID 4" off \
+      raid5 "RAID 5" off \
+      raid6 "RAID 6" off \
+      raid10 "RAID 10" off
+    # Verify if the user accept the dialog
+    rv=$?
+    if [ "$rv" -eq 0 ]; then
+      _answers=$(cat "$ANSWER")
+      if echo "$_answers" | grep -w "raid0"; then
+        set_option RAID "0"
+      elif echo "$_answers" | grep -w "raid1"; then
+        set_option RAID "1"
+      elif echo "$_answers" | grep -w "raid4"; then
+        set_option RAID "4"
+      elif echo "$_answers" | grep -w "raid5"; then
+        set_option RAID "5"
+      elif echo "$_answers" | grep -w "raid6"; then
+        set_option RAID "6"
+      elif echo "$_answers" | grep -w "raid10"; then
+        set_option RAID "10"
+      fi
+    elif [ "$rv" -eq 1 ]; then # Verify if the user not accept the dialog
+      return
+    fi
+    # Read selected RAID option
+    _raid=$(get_option RAID)
+    # Check if the user select RAID
+    if [ "$_raid" -ge 0 ]; then
+      while true; do
+        DIALOG --ok-label "Select" --cancel-label "Done" --extra-button --extra-label "Abort" \
+          --title " Select partition(s) for raid" --menu "$MENULABEL" \
+          ${MENUSIZE} $(show_partitions_filtered "$_dev")
+        rv=$?
+        if [ "$rv" = 0 ]; then # Check if user press Select button
+          _dev+=$(cat "$ANSWER")
+          _dev+=" "
+        elif [[ -z "$_dev" ]] || [[ "$rv" -eq 3 ]]; then # Check if user press Abort or Done buttons without selection
+          return
+        elif [ "$rv" -ne 0 ]; then # Check if user press Done button
+          break
+        fi
+      done
+      # Delete last space
+      _dev=$(echo "$_dev"|awk '{$1=$1;print}')
+      if [[ -n "$_dev" ]]; then\
+        set_option RAIDPV "$_dev"
+        set_raid
+      else
+        set_option RAIDPV ""
+      fi
+    fi
+    RAID_DONE=1
+  else
+    return
+  fi
+}
+
+# Function to create raid software with loaded parameters from saved configure file
+set_raid() {
+  # Define some local variables
+  local _raid _raidpv _raidnbdev _mdadm _hostname _index _raid_uuid
+  # Load variables from configure file if exist else define presets
+  _raid=$(get_option RAID)
+  _raidpv=$(get_option RAIDPV)
+  _hostname=$(get_option HOSTNAME)
+  _index=$(get_option INDEXRAID)
+  # Add config file for dracut if not exist
+  if [ ! -f /etc/dracut.conf.d/md.conf ]; then
+    echo "mdadmconf=\"yes\"" > /etc/dracut.conf.d/md.conf
+  fi
+  # Check if the user choose an option for raid software and physically partitions for the raid
+  if [ -n "$_raid" ] && [ -n "$_raidpv" ]; then
+    [ -z "$_index" ] && _index=0  # Initialize an index for unique naming raid block if not exist saved in configure file
+    _raidnbdev=$(wc -w <<< "$_raidpv") # count numbers of partitions
+    echo "Create RAID $_raid for $_raidpv" >>"$LOG"
+    {
+      if [ "$_raid" -eq 0 ]; then
+        if echo "$_raidpv" | grep -q md; then # Check if used a raid, if yes do not write zero again
+          set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=0 --homehost="$_hostname" \
+            --raid-devices="$_raidnbdev" "$@"
+        else
+          set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=0 --write-zeroes --homehost="$_hostname" \
+          --raid-devices="$_raidnbdev" "$@"
+        fi
+      elif [ "$_raid" -eq 1 ]; then
+        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=1 --write-zeroes --homehost="$_hostname" \
+        --bitmap='internal' --metadata=1.2 --raid-devices="$_raidnbdev" "$@"
+      elif [ "$_raid" -eq 4 ]; then
+        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=4 --write-zeroes --homehost="$_hostname" \
+        --bitmap='internal' --raid-devices="$_raidnbdev" "$@"
+      elif [ "$_raid" -eq 5 ]; then
+        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=5 --write-zeroes --homehost="$_hostname" \
+        --bitmap='internal' --raid-devices="$_raidnbdev" "$@"
+      elif [ "$_raid" -eq 6 ]; then
+        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=6 --write-zeroes --homehost="$_hostname" \
+        --bitmap='internal' --raid-devices="$_raidnbdev" "$@"
+      elif [ "$_raid" -eq 10 ]; then
+        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=10 --write-zeroes --homehost="$_hostname" \
+        --bitmap='internal' --raid-devices="$_raidnbdev" "$@"
+      fi
+    } >>"$LOG" 2>&1
+    # Prepare config file /etc/mdadm.conf
+    _mdadm=$(mdadm --detail --scan)
+    echo "$_mdadm" > /etc/mdadm.conf
+    # Prepare variable used in grub for kernel command line
+    _raid_uuid=$(sudo mdadm --detail /dev/md${_index} | grep UUID | awk '{print $NF}') # Got UUID for RAID block
+    RD_MD_UUID+="rd.md.uuid=$_raid_uuid " # Global variable used in set_boot function
+    _index=$((_index + 1))  # Increment the index for the next raid block
+    set_option INDEXRAID "$_index" # save in configure file the last unused index to be used for next set_raid appellation
   fi
 }
 
@@ -1336,10 +1632,10 @@ set_bootloader() {
   chroot $TARGETDIR sed -i 's/GRUB_DISTRIBUTOR="Void"/GRUB_DISTRIBUTOR="BRGV-OS"/g' /etc/default/grub >>$LOG 2>&1
   if [ "$bool" -eq 1 ] && [ "$_boot" -eq 0 ]; then # For full encrypted installation
     echo "Prepare parameters on Grub for crypted device(s) ${bold}${luks_devices[*]}${reset}"  >>$LOG
-    chroot $TARGETDIR sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4\"/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4 ${_rd_luks_uuid} cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash\"/g" /etc/default/grub >>$LOG 2>&1
+    chroot $TARGETDIR sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4\"/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4 ${RD_MD_UUID} ${_rd_luks_uuid} cryptkey=rootfs:\/boot\/cryptlvm.key quiet splash\"/g" /etc/default/grub >>$LOG 2>&1
   else # For not full encrypted installation
     echo "Prepare parameters on Grub for device ${bold}$ROOTFS${reset}"  >>$LOG
-    chroot $TARGETDIR sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4\"/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4 ${_rd_luks_uuid} quiet splash\"/g" /etc/default/grub >>$LOG 2>&1
+    chroot $TARGETDIR sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4\"/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4 ${RD_MD_UUID} ${_rd_luks_uuid} quiet splash\"/g" /etc/default/grub >>$LOG 2>&1
   fi
   chroot $TARGETDIR sed -i '$aGRUB_DISABLE_OS_PROBER=false' /etc/default/grub >>$LOG 2>&1
   echo "Running grub-mkconfig on ${bold}$TARGETDIR${reset}..." >>"$LOG"
@@ -1590,12 +1886,13 @@ as FAT32, mountpoint /boot/efi and at least with 100MB of size." ${MSGBOXSIZE}
 create_filesystems() {
   # Define some variables local
   local mnts dev mntpt fstype fspassno mkfs size rv uuid MKFS mem_total swap_need disk_name disk_type ROOT_UUID SWAP_UUID
-  local _lvm _crypt _vgname _lvswap _lvrootfs _home _basename_mntpt _devcrypt
+  local _lvm _crypt _vgname _lvswap _lvrootfs _home _basename_mntpt _devcrypt _raid
   # Initialize some local variables
   disk_type=0
   _lvm=$(get_option LVM)
   _crypt=$(get_option CRYPTO_LUKS)
   _devcrypt=$(get_option DEVCRYPT)
+  _raid=$(get_option RAID)
   # Check if is defined mount device for /home
   [ -n "$(grep -E '/home .*' /tmp/.brgvos-installer.conf)" ] && _home=1 || _home=0
   # Output all defined MOUNTPOINT from configure file
@@ -1853,8 +2150,15 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
         options="defaults,noatime,nodiratime"
       elif [ "$fstype" = "xfs" ]; then
         options="defaults,noatime,nodiratime,user_xattr"
-      elif [ "$fstype" = "vfat" ] || [ "$fstype" = "f2fs" ]; then
+      elif [ "$fstype" = "f2fs" ]; then
         options="defaults"
+      elif [ "$fstype" = "vfat" ]; then
+        if [ -n "$_raid" ] && [ "$mntpt" = "/boot/efi" ]; then # Check if was selected RAID and set noauto for /boot/efi for RAID
+          options="defaults,noauto"
+          fspassno=0 # Set do not check fsck at boot because is not auto-mounted
+        else
+          options="defaults"
+        fi
       fi
       echo "Options, for filesystem ${bold}$fstype${reset}, used for mount ${bold}$mntpt${reset} in fstab
        is ${bold}$options${reset} on ${bold}HDD${reset}" >>"$LOG"
@@ -1865,8 +2169,15 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
         options="defaults,noatime,nodiratime,discard"
       elif [ "$fstype" = "xfs" ]; then
         options="defaults,noatime,nodiratime,discard,ssd,user_xattr"
-      elif [ "$fstype" = "vfat" ] || [ "$fstype" = "f2fs" ]; then
+      elif [ "$fstype" = "f2fs" ]; then
         options="defaults"
+      elif [ "$fstype" = "vfat" ]; then
+        if [ -n "$_raid" ] && [ "$mntpt" = "/boot/efi" ]; then # Check if was selected RAID and set noauto for /boot/efi for RAID
+          options="defaults,noauto"
+          fspassno=0 # Set do not check fsck at boot because is not auto-mounted
+        else
+          options="defaults"
+        fi
       fi
       echo "Options, for filesystem ${bold}$fstype${reset}, used for mount ${bold}$mntpt${reset} in fstab
        is ${bold}$options${reset} on ${bold}SSD${reset}" >>"$LOG"
@@ -2290,6 +2601,7 @@ menu() {
       "UserAccount" "Set primary user name and password" \
       "BootLoader" "Set disk to install bootloader" \
       "Partition" "Partition disk(s)" \
+      "Raid" "Raid software" \
       "LVM&LUKS" "Set LVM and crypto LUKS" \
       "Filesystems" "Configure filesystems and mount points" \
       "Install" "Start installation with saved settings" \
@@ -2311,6 +2623,7 @@ menu() {
       "UserAccount" "Set primary user name and password" \
       "BootLoader" "Set disk to install bootloader" \
       "Partition" "Partition disk(s)" \
+      "Raid" "Raid software" \
       "LVM&LUKS" "Set LVM and crypto LUKS" \
       "Filesystems" "Configure filesystems and mount points" \
       "Install" "Start installation with saved settings" \
@@ -2339,8 +2652,9 @@ menu() {
   "UserAccount") menu_useraccount && [ -n "$USERLOGIN_DONE" ] && [ -n "$USERPASSWORD_DONE" ] \
     && DEFITEM="BootLoader";;
   "BootLoader") menu_bootloader && [ -n "$BOOTLOADER_DONE" ] && DEFITEM="Partition";;
-  "Partition") menu_partitions && [ -n "$PARTITIONS_DONE" ] && DEFITEM="LVM&LUKS";;
-  "LVM&LUKS") menu_lvm_luks && [ -n "$PARTITIONS_DONE" ] && DEFITEM="Filesystems";;
+  "Partition") menu_partitions && [ -n "$PARTITIONS_DONE" ] && DEFITEM="Raid";;
+  "Raid") menu_raid && [ -n "$RAID_DONE" ] && DEFITEM="LVM&LUKS";;
+  "LVM&LUKS") menu_lvm_luks && [ -n "$LVMLUKS_DONE" ] && DEFITEM="Filesystems";;
   "Filesystems") menu_filesystems && [ -n "$FILESYSTEMS_DONE" ] && DEFITEM="Install";;
   "Install") menu_install;;
   "Exit") DIE;;
