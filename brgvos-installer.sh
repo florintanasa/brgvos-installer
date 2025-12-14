@@ -1389,7 +1389,7 @@ menu_rootpassword() {
       fi
       if [ -n "${_firstpass}" -a -n "${_secondpass}" ]; then
         if [ "${_firstpass}" != "${_secondpass}" ]; then
-          INFOBOX "Passwords do not match! Please enter again." 6 60
+          INFOBOX "${RED}ERROR:${RESET}Passwords do not match! Please enter again." 6 60
           unset _firstpass _secondpass _again
           sleep 2 && clear && continue
         fi
@@ -1426,7 +1426,7 @@ menu_useraccount() {
         USERLOGIN_DONE=1
         break
       else
-        INFOBOX "Invalid login name! Please try again." 6 60
+        INFOBOX "${RED}ERROR:${RESET}Invalid login name! Please try again." 6 60
         unset _userlogin
         sleep 2 && clear && continue
       fi
@@ -1464,7 +1464,7 @@ menu_useraccount() {
       fi
       if [ -n "${_firstpass}" -a -n "${_secondpass}" ]; then
         if [ "${_firstpass}" != "${_secondpass}" ]; then
-          INFOBOX "Passwords do not match! Please enter again." 6 60
+          INFOBOX "${RED}ERROR:${RESET}Passwords do not match! Please enter again." 6 60
           unset _firstpass _secondpass _again
           sleep 2 && clear && continue
         fi
@@ -2389,11 +2389,11 @@ menu_install() {
   BOOTLOADER_DONE="$(get_option BOOTLOADER)"
 
   if [ -z "$ROOTPASSWORD_DONE" ]; then
-    DIALOG --msgbox "${BOLD}The root password has not been configured, \
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET}${BOLD}The root password has not been configured, \
 please do so before starting the installation.${RESET}" ${MSGBOXSIZE}
     return 1
   elif [ -z "$BOOTLOADER_DONE" ]; then
-    DIALOG --msgbox "${BOLD}The disk to install the bootloader has not been \
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET}${BOLD}The disk to install the bootloader has not been \
 configured, please do so before starting the installation.${RESET}" ${MSGBOXSIZE}
     return 1
   fi
@@ -2403,7 +2403,7 @@ configured, please do so before starting the installation.${RESET}" ${MSGBOXSIZE
   validate_filesystems || return 1
 
   if [ -z "$FILESYSTEMS_DONE" ]; then
-    DIALOG --msgbox "${BOLD}Required filesystems were not configured, \
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET}${BOLD}Required filesystems were not configured, \
 please do so before starting the installation.${RESET}" ${MSGBOXSIZE}
     return 1
   fi
@@ -2557,7 +2557,7 @@ ${BOLD}Do you want to continue?${RESET}" 20 80 || return
   umount_filesystems
 
   # installed successfully.
-  DIALOG --yesno "${BOLD}BRGV-OS Linux has been installed successfully!${RESET}\n
+  DIALOG --yesno "${BOLD}${GREEN}BRGV-OS Linux has been installed successfully!${RESET}\n
 Do you want to reboot the system?" ${YESNOSIZE}
   if [ $? -eq 0 ]; then
     shutdown -r now
