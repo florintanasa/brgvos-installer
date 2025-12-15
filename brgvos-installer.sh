@@ -245,10 +245,19 @@ if [ -e /sys/firmware/efi/systab ]; then
   fi
 fi
 
-# For message with echo
+# For message with echo or printf in bash
 bold=$(tput bold) # Start bold text
 underline=$(tput smul) # Start underlined text
 reset=$(tput sgr0) # Turn off all attributes
+black=$(tput setaf 0)
+red=$(tput setaf 1)
+green=$(tput setaf 2)
+yellow=$(tput setaf 3)
+blue=$(tput setaf 4)
+magenta=$(tput setaf 5)
+cyan=$(tput setaf 6)
+white=$(tput setaf 7)
+
 
 # Dialog colors
 BLACK="\Z0"
@@ -286,6 +295,13 @@ INFOBOX() {
   dialog --colors --no-shadow --no-mouse \
     --backtitle "${BOLD}${WHITE}BRGV-OS Linux installation -- https://github.com/florintanasa/brgvos-void (@@MKLIVE_VERSION@@)${RESET}" \
     --title "${TITLE}" --aspect 20 --infobox "$@"
+}
+
+GAUGE() {
+  # Note: dialog --infobox and --keep-tite don't work together
+  dialog --colors --no-shadow --no-mouse \
+    --backtitle "${BOLD}${WHITE}BRGV-OS Linux installation -- https://github.com/florintanasa/brgvos-void (@@MKLIVE_VERSION@@)${RESET}" \
+    --title "${TITLE}" --aspect 20 --gauge "$@"
 }
 
 # Function used for clean exit from script
@@ -656,6 +672,7 @@ menu_filesystems() {
       "ext3" "Linux ext3 (journal)" \
       "ext4" "Linux ext4 (journal)" \
       "f2fs" "Flash-Friendly Filesystem" \
+      "f2fs_c" "Flash-Friendly Filesystem with compression, lazytime" \
       "swap" "Linux swap" \
       "vfat" "FAT32" \
       "xfs" "SGI's XFS"
@@ -910,31 +927,45 @@ set_lvm_luks() {
   # Check if user choose to encrypt the device
   if [ "$_crypt" = 1 ]; then
       PASSPHRASE=$(get_option USERPASSWORD)
-    [ -z "$_index" ] && _index=0  # Initialize an index for unique naming if not exist saved in configure file
+      [ -z "$_index" ] && _index=0  # Initialize an index for unique naming if not exist saved in configure file
       for _device in $_pv; do  # Ensure $_pv contains the correct devices
-        {
-            echo -n "$PASSPHRASE" | cryptsetup luksFormat --type=luks1 "$_device" -d -
-            # Generate a unique name based on the index
-            _crypt_name="crypt_${_index}"
-            echo -n "$PASSPHRASE" | cryptsetup luksOpen "$_device" "$_crypt_name" -d -
-           _cd+="/dev/mapper/$_crypt_name "
-           _cd+=" "
-           _crypts+="${_crypt_name}"
-           _crypts+=" "
-           _index=$((_index + 1))  # Increment the index for the next device
-        } >>"$LOG" 2>&1
-        _devcrypt+=$(for s in /sys/class/block/$(basename "$(readlink -f /dev/mapper/$_crypt_name)")/slaves/*; do echo "/dev/${s##*/}"; done)
-        _devcrypt+=" "
+          {
+              TITLE="Starting encryption..."
+              echo "$TITLE" >>"$LOG"
+              echo -n "$PASSPHRASE" | cryptsetup luksFormat --type=luks1 "$_device" -d - &
+              luks_pid=$! # load PID
+              # Monitor the process with an infobox
+              start_time=$(date +%s)
+              while kill -0 "$luks_pid" 2>/dev/null; do
+                  current_time=$(date +%s)
+                  elapsed=$((current_time - start_time))
+                  echo -ne "Encrypting $_device... Time elapsed: $elapsed seconds\033[0K\r" >>"$LOG"
+                  INFOBOX "Start encrypting ${BOLD}$_device${RESET} ...\nTime elapsed: ${BOLD}$elapsed${RESET} seconds" 4 80
+                  sleep 1
+              done
+              # Wait for the process to finish
+              wait "$luks_pid"
+              # Generate a unique name based on the index
+              _crypt_name="crypt_${_index}"
+              echo -n "$PASSPHRASE" | cryptsetup luksOpen "$_device" "$_crypt_name" -d -
+              _cd+="/dev/mapper/$_crypt_name "
+              _cd+=" "
+              _crypts+="${_crypt_name}"
+              _crypts+=" "
+              _index=$((_index + 1))  # Increment the index for the next device
+          } #>>"$LOG" 2>&1
+          _devcrypt+=$(for s in /sys/class/block/$(basename "$(readlink -f /dev/mapper/$_crypt_name)")/slaves/*; do
+            echo "/dev/${s##*/}"; done)
+          _devcrypt+=" "
       done
-    set_option INDEX "$_index" # save in configure file the last unused index to be used for next set_lvm_luks appellation
-    # Delete last space
-    _cd=$(echo "$_cd"|awk '{$1=$1;print}')
-    #_crypts=$(echo "$_crypts"|awk '{$1=$1;print}')
-    #_devcrypt=$(echo "$_devcrypt"|awk '{$1=$1;print}')
-    set_option CRYPTS "${_crypts}"
-    set_option DEVCRYPT "${_devcrypt}"
-    #export DEVCRYPT="${_devcrypt}"
-    echo "Device(s) ${_devcrypt} was encrypted" >>"$LOG"
+      set_option INDEX "$_index" # Save the last unused index for the next set_lvm_luks appellation
+      # Delete last space
+      _cd=$(echo "$_cd"|awk '{$1=$1;print}')
+      # Save the options in configure file
+      set_option CRYPTS "${_crypts}"
+      set_option DEVCRYPT "${_devcrypt}"
+      # Send the message with job done
+      echo -e "\nDevice(s) ${_devcrypt} is/are encrypted" >>"$LOG"
   fi
   # Check if user choose to use LVM for devices
   if [ "$_lvm" = 1 ]; then
@@ -1101,7 +1132,7 @@ ${BOLD}${MAGENTA}RAID ${RED}60 ${YELLOW}(Double Parity + Stripe)${RESET}\n
     if [ "$_raid" -ge 0 ]; then
       while true; do
         DIALOG --ok-label "Select" --cancel-label "Done" --extra-button --extra-label "Abort" \
-          --title " Select partition(s) for raid" --menu "$MENULABEL" \
+          --title " Select partitions for RAID $_raid" --menu "$MENULABEL" \
           ${MENUSIZE} $(show_partitions_filtered "$_dev")
         rv=$?
         if [ "$rv" = 0 ]; then # Check if user press Select button
@@ -1128,6 +1159,74 @@ ${BOLD}${MAGENTA}RAID ${RED}60 ${YELLOW}(Double Parity + Stripe)${RESET}\n
   fi
 }
 
+#  Function to calculate total capacity, out used on set_raid function
+calculate_total_capacity() {
+  local -a devs=("$@")
+  local total=0 size
+  for d in "${devs[@]}"; do
+    size=$(blockdev --getsize64 "$d")
+    total=$((total + size))
+  done
+  echo $((total / 1024))          # transform in KB
+}
+
+# Function to monitor progress for --write-zeroes
+#  $1 – total capacity in KB - calculated by function calculate_total_capacity
+#  $2 – device name for RAID (ex: md0)
+#  $3 - RAID type (ex: 5)
+#  $@ – Devices list
+monitor_progress() {
+  local total_kb=$1
+  local md_name=$2
+  local _raid=$3
+  shift 3
+  local -a devs=("$@")
+  # PID of mdadm launch by set_raid function
+  local mdadm_pid=$mdadm_pid
+  local last_perc=0
+  local written=0
+  TITLE="Progress for writing zero"
+  GAUGE "Start of the process…" 10 70 0 &
+  local dlg_pid=$!
+  while :; do
+    local cur_written=0
+    for d in "${devs[@]}"; do
+      if [[ -b "$d" ]]; then
+        # iostat with -dk, jump the header and take col 7 (KB written)
+        local kb
+        kb=$(iostat -dk "$d" 1 1 | tail -n +4 | awk '{print $7}' | head -n1)
+        [[ -z $kb ]] && kb=0
+        cur_written=$((cur_written + kb))
+      fi
+    done
+    written=$cur_written
+    # Percent calcul
+    local perc=0
+    (( total_kb > 0 )) && perc=$((written * 100 / total_kb))
+    # Check the RAID status from /proc/mdstat
+    local status=$(grep "md${_index}" /proc/mdstat)
+    if echo "$status" | grep -q "active"; then
+      echo "Complete zeroing!" >> "$LOG"
+      perc=100
+    fi
+    # Refresh gauge dialog only if percentage is changed
+    if (( perc != last_perc )); then
+      last_perc=$perc
+      echo "$perc" | GAUGE "RAID $_raid: $md_name\nTotal capacity to write zero: ${total_kb}KB\nWritten: ${written}KB" 10 70
+    fi
+
+    # Out from function when the mdadm command is closed
+    if ! ps -p $mdadm_pid > /dev/null; then
+      echo "The mdadm command is finished." >> "$LOG"
+      break
+    fi
+    # Wait 1s
+    sleep 1
+  done
+  # Kill dialog using PID at the final
+  kill "$dlg_pid" 2>/dev/null
+}
+
 # Function to create raid software with loaded parameters from saved configure file
 set_raid() {
   # Define some local variables
@@ -1152,26 +1251,84 @@ set_raid() {
           set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=0 --homehost="$_hostname" \
             --raid-devices="$_raidnbdev" "$@"
         else
-          set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=0 --write-zeroes --homehost="$_hostname" \
-          --raid-devices="$_raidnbdev" "$@"
+          set -- $_raidpv;
+          mdadm --create --verbose /dev/md${_index} --level=0 --write-zeroes --homehost="$_hostname" \
+                --raid-devices="$_raidnbdev" "$@" &> /dev/null &
+          mdadm_pid=$!
+          set -- $_raidpv;
+          # Call the function calculate_total_capacity with parameters (list of partitions) and assign the result
+          total_kb=$(calculate_total_capacity "$@")
+          set -- $_raidpv;
+          # Call the function with parameters
+          monitor_progress "$total_kb" "md${_index}" "$_raid" "$@"
         fi
       elif [ "$_raid" -eq 1 ]; then
-        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=1 --write-zeroes --homehost="$_hostname" \
-        --bitmap='internal' --metadata=1.2 --raid-devices="$_raidnbdev" "$@"
+        set -- $_raidpv;
+        #mdadm --create --verbose /dev/md${_index} --level=1 --write-zeroes --homehost="$_hostname" \
+        #--bitmap='internal' --metadata=1.2 --raid-devices="$_raidnbdev" "$@"
+        mdadm --create --verbose /dev/md${_index} --level=1 --write-zeroes --homehost="$_hostname" \
+          --bitmap='internal' --metadata=1.2 --raid-devices="$_raidnbdev" "$@" &> /dev/null &
+        mdadm_pid=$!
+        set -- $_raidpv;
+        # Call the function calculate_total_capacity with parameters (list of partitions) and assign the result
+        total_kb=$(calculate_total_capacity "$@")
+        set -- $_raidpv;
+        # Call the function with parameters
+        monitor_progress "$total_kb" "md${_index}" "$_raid" "$@"
       elif [ "$_raid" -eq 4 ]; then
-        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=4 --write-zeroes --homehost="$_hostname" \
-        --bitmap='internal' --raid-devices="$_raidnbdev" "$@"
+        set -- $_raidpv;
+        #mdadm --create --verbose /dev/md${_index} --level=4 --write-zeroes --homehost="$_hostname" \
+        #--bitmap='internal' --raid-devices="$_raidnbdev" "$@"
+        mdadm --create --verbose /dev/md${_index} --level=4 --write-zeroes --homehost="$_hostname" \
+          --bitmap='internal' --raid-devices="$_raidnbdev" "$@" &> /dev/null &
+        mdadm_pid=$!
+        set -- $_raidpv;
+        # Call the function calculate_total_capacity with parameters (list of partitions) and assign the result
+        total_kb=$(calculate_total_capacity "$@")
+        set -- $_raidpv;
+        # Call the function with parameters
+        monitor_progress "$total_kb" "md${_index}" "$_raid" "$@"
       elif [ "$_raid" -eq 5 ]; then
-        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=5 --write-zeroes --homehost="$_hostname" \
-        --bitmap='internal' --raid-devices="$_raidnbdev" "$@"
+        set -- $_raidpv;
+        #mdadm --create --verbose /dev/md${_index} --level=5 --write-zeroes --homehost="$_hostname" \
+        #--bitmap='internal' --raid-devices="$_raidnbdev" "$@"
+        mdadm --create --verbose /dev/md${_index} --level=5 --write-zeroes --homehost="$_hostname" \
+          --bitmap='internal' --raid-devices="$_raidnbdev" "$@" &> /dev/null &
+        mdadm_pid=$!
+        set -- $_raidpv;
+        # Call the function calculate_total_capacity with parameters (list of partitions) and assign the result
+        total_kb=$(calculate_total_capacity "$@")
+        set -- $_raidpv;
+        # Call the function with parameters
+        monitor_progress "$total_kb" "md${_index}" "$_raid" "$@"
       elif [ "$_raid" -eq 6 ]; then
-        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=6 --write-zeroes --homehost="$_hostname" \
-        --bitmap='internal' --raid-devices="$_raidnbdev" "$@"
+        set -- $_raidpv;
+        #mdadm --create --verbose /dev/md${_index} --level=6 --write-zeroes --homehost="$_hostname" \
+        #--bitmap='internal' --raid-devices="$_raidnbdev" "$@"
+        mdadm --create --verbose /dev/md${_index} --level=6 --write-zeroes --homehost="$_hostname" \
+          --bitmap='internal' --raid-devices="$_raidnbdev" "$@" &> /dev/null &
+        mdadm_pid=$!
+        set -- $_raidpv;
+        # Call the function calculate_total_capacity with parameters (list of partitions) and assign the result
+        total_kb=$(calculate_total_capacity "$@")
+        set -- $_raidpv;
+        # Call the function with parameters
+        monitor_progress "$total_kb" "md${_index}" "$_raid" "$@"
       elif [ "$_raid" -eq 10 ]; then
-        set -- $_raidpv; mdadm --create --verbose /dev/md${_index} --level=10 --write-zeroes --homehost="$_hostname" \
-        --bitmap='internal' --raid-devices="$_raidnbdev" "$@"
+        set -- $_raidpv;
+        #mdadm --create --verbose /dev/md${_index} --level=10 --write-zeroes --homehost="$_hostname" \
+        #--bitmap='internal' --raid-devices="$_raidnbdev" "$@"
+        mdadm --create --verbose /dev/md${_index} --level=10 --write-zeroes --homehost="$_hostname" \
+          --bitmap='internal' --raid-devices="$_raidnbdev" "$@" &> /dev/null &
+        mdadm_pid=$!
+        set -- $_raidpv;
+        # Call the function calculate_total_capacity with parameters (list of partitions) and assign the result
+        total_kb=$(calculate_total_capacity "$@")
+        set -- $_raidpv;
+        # Call the function with parameters
+        monitor_progress "$total_kb" "md${_index}" "$_raid" "$@"
       fi
-    } >>"$LOG" 2>&1
+    } #>>"$LOG" 2>&1
     # Prepare config file /etc/mdadm.conf
     _mdadm=$(mdadm --detail --scan)
     echo "$_mdadm" > /etc/mdadm.conf
@@ -1373,7 +1530,7 @@ menu_rootpassword() {
       fi
       if [ -n "${_firstpass}" -a -n "${_secondpass}" ]; then
         if [ "${_firstpass}" != "${_secondpass}" ]; then
-          INFOBOX "Passwords do not match! Please enter again." 6 60
+          INFOBOX "${RED}ERROR:${RESET}Passwords do not match! Please enter again." 6 60
           unset _firstpass _secondpass _again
           sleep 2 && clear && continue
         fi
@@ -1410,7 +1567,7 @@ menu_useraccount() {
         USERLOGIN_DONE=1
         break
       else
-        INFOBOX "Invalid login name! Please try again." 6 60
+        INFOBOX "${RED}ERROR:${RESET}Invalid login name! Please try again." 6 60
         unset _userlogin
         sleep 2 && clear && continue
       fi
@@ -1448,7 +1605,7 @@ menu_useraccount() {
       fi
       if [ -n "${_firstpass}" -a -n "${_secondpass}" ]; then
         if [ "${_firstpass}" != "${_secondpass}" ]; then
-          INFOBOX "Passwords do not match! Please enter again." 6 60
+          INFOBOX "${RED}ERROR:${RESET}Passwords do not match! Please enter again." 6 60
           unset _firstpass _secondpass _again
           sleep 2 && clear && continue
         fi
@@ -1886,9 +2043,9 @@ as FAT32, mountpoint /boot/efi and at least with 100MB of size." ${MSGBOXSIZE}
 create_filesystems() {
   # Define some variables local
   local mnts dev mntpt fstype fspassno mkfs size rv uuid MKFS mem_total swap_need disk_name disk_type ROOT_UUID SWAP_UUID
-  local _lvm _crypt _vgname _lvswap _lvrootfs _home _basename_mntpt _devcrypt _raid
+  local _lvm _crypt _vgname _lvswap _lvrootfs _home _basename_mntpt _devcrypt _raid _dev
   # Initialize some local variables
-  disk_type=0
+  disk_type=0 # Default SSD used
   _lvm=$(get_option LVM)
   _crypt=$(get_option CRYPTO_LUKS)
   _devcrypt=$(get_option DEVCRYPT)
@@ -1933,6 +2090,7 @@ create_filesystems() {
       ext3) MKFS="mke2fs -F -j"; modprobe ext3 >>"$LOG" 2>&1;;
       ext4) MKFS="mke2fs -F -t ext4"; modprobe ext4 >>"$LOG" 2>&1;;
       f2fs) MKFS="mkfs.f2fs -f"; modprobe f2fs >>"$LOG" 2>&1;;
+      f2fs_c) MKFS="mkfs.f2fs -f -i -O extra_attr,inode_checksum,sb_checksum,compression"; modprobe f2fs >>"$LOG" 2>&1;;
       vfat) MKFS="mkfs.vfat -F32"; modprobe vfat >>"$LOG" 2>&1;;
       xfs) MKFS="mkfs.xfs -f -i sparse=0"; modprobe xfs >>"$LOG" 2>&1;;
       esac
@@ -1950,14 +2108,20 @@ create_filesystems() {
     [ "$mntpt" != "/" ] && continue
     mkdir -p "$TARGETDIR"
       echo "Mounting ${bold}$dev${reset} on ${bold}$mntpt${reset} (${bold}$fstype${reset})..." >>"$LOG"
-      mount -t "$fstype" "$dev" "$TARGETDIR" >>"$LOG" 2>&1
+    if [ "$fstype" != "f2fs_c" ]; then
+        mount -t "$fstype" "$dev" "$TARGETDIR" >>"$LOG" 2>&1
+      else
+        mount -t f2fs -o compress_algorithm=zstd:6,compress_chksum,atgc,gc_merge,lazytime "$dev" "$TARGETDIR" >>"$LOG" 2>&1
+        echo "Run ${bold}chattr -R -V +c $TARGETDIR${reset}" >>"$LOG"
+        chattr -R -V +c "$TARGETDIR"  >>"$LOG" 2>&1
+    fi
     _devcrypt=$(echo "$_devcrypt"|awk '{$1=$1;print}') # delete last space
       if [ -n "${_devcrypt}" ]; then
           ROOTFS="${_devcrypt}"
           echo "For rootfs is used next encrypted device(s) ${bold}${ROOTFS}${reset}" >>"$LOG"
         else
           ROOTFS=$dev
-          echo "For rootfs is used next encrypted device ${bold}$ROOTFS${reset}" >>"$LOG"
+          echo "For rootfs is used next device ${bold}$ROOTFS${reset}" >>"$LOG"
       fi
       rv=$?
       if [ "$rv" -ne 0 ]; then
@@ -1966,7 +2130,63 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
         DIE 1
       fi
     # Check if was mounted HDD or SSD
-    if [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 1 ]; then # For LVM on LUKS
+    # For LVM on RAID on LUKS
+    if $(lvs --noheadings|while read -r lvname vgname perms size; do
+      echo "/dev/mapper/${vgname}-${lvname}"; done | grep -q "$dev" &&
+      lvdisplay -m $dev 2>/dev/null| awk '/^    Physical volume/ {print $3}'| grep -q md) &&
+      $(cat /proc/mdstat | grep $(basename $(lvdisplay -m $dev | awk '/^    Physical volume/ {print $3}')) | grep -q dm); then
+      # Get the name of RAID
+      md=$(lvdisplay -m $dev | awk '/^    Physical volume/ {print $3}'| grep md)
+      # Get encrypt devices from the RAID
+      dm=$(mdadm --detail $md | awk '{print $8}' | grep /dev/dm)
+      echo -e "For LVM+RAID+LUKS are used RAID: ${bold}$md${reset} with encrypted blocks:\n${bold}$dm${reset}" >>"$LOG"
+      disk_name=$(lsblk -ndo pkname "$(for s in /sys/block/$(basename "$dm")/slaves/*; do
+        echo "/dev/${s##*/}"
+      done)")
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      mapfile -t _dm <<< "$dm"
+      echo "Determine type of disk for ${bold}${_map[0]}${reset} used for block ${bold}${_dm[0]}${reset}" >>"$LOG"
+      # Get first element from matrices
+      # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+    # For LVM on LUKS on RAID
+    elif lvdisplay -m $dev 2>/dev/null| awk '/^    Physical volume/ {print $3}'| grep -q crypt &&
+        ls /sys/class/block/$(basename $(readlink -f  /dev/mapper/crypt_0))/slaves/ | grep -q md ; then
+        md=$(
+          for pv in $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}' | sort -u); do
+            dm=$(basename "$(readlink -f "$pv")")
+            for s in /sys/class/block/$dm/slaves/*; do
+              echo "/dev/${s##*/}"
+            done
+          done
+        )
+        disk_name=$(for s in /sys/class/block/$(basename "$(readlink -f "$md")")/slaves/*; do
+          _dev=$(basename "$s")
+          if echo $_dev | grep -q md; then
+            for s in /sys/class/block/$_dev/slaves/*; do
+              _dev=$(basename "$s")
+              parent=$(lsblk -ndo pkname /dev/"$_dev")
+              if [ -n "$parent" ]; then
+                echo "$parent"
+              fi
+            done | sort -u
+          else
+            parent=$(lsblk -ndo pkname /dev/"$_dev")
+            if [ -n "$parent" ]; then
+              echo "$parent"
+            fi
+          fi
+        done | sort -u)
+        echo -e "For LVM+LUKS+RAID are used next disks:\n${bold}$disk_name${reset}" >>"$LOG"
+        # Read every line from disk_name into matrices
+        mapfile -t _map <<< "$disk_name"
+        echo "Determine type of disk (SSD/HDD) is used for ${bold}${_map[0]}${reset}" >>"$LOG"
+        # Get first element from matrices
+        # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
+        disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+    # For LVM on LUKS
+    elif lvdisplay -m $dev 2>/dev/null| awk '/^    Physical volume/ {print $3}'| grep -q crypt; then
       disk_name=$(lsblk -ndo pkname $(
         for pv in $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}' | sort -u); do
           dm=$(basename "$(readlink -f "$pv")")
@@ -1975,23 +2195,110 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
           done
         done
       ) | sort -u)
-      echo "For LVM+LUKS is used disk(s) ${bold}$disk_name${reset}" >>"$LOG"
+      echo -e "For LVM+LUKS is/are used disk(s):\n ${bold}$disk_name${reset}" >>"$LOG"
       # Read every line from disk_name into matrices
       mapfile -t _map <<< "$disk_name"
       echo "Determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
       # Get first element from matrices
       # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
       disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
-    elif [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 0 ]; then # For LVM
+    # For LVM on RAID
+    elif lvs --noheadings|while read -r lvname vgname perms size; do
+      echo "/dev/mapper/${vgname}-${lvname}"; done | grep -q "$dev" &&
+      lvdisplay -m "$dev" 2>/dev/null| awk '/^    Physical volume/ {print $3}'| grep -q md; then
+        md=$(
+          for pv in $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}' | sort -u); do
+            dm=$(basename "$(readlink -f "$pv")")
+            for s in /sys/class/block/"$dm"/slaves/*; do
+              echo "/dev/${s##*/}"
+            done
+          done
+        )
+        disk_name=$(for s in $md; do
+                      parent=$(lsblk -ndo pkname "$s")
+                        if [ -n "$parent" ]; then
+                          echo "$parent"
+                        fi
+                   done)
+      echo -e "For LVM+RAID are used next disks:\n${bold}$disk_name${reset}" >>"$LOG"
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      echo "Determine type of disk (SSD/HDD) is used for ${bold}${_map[0]}${reset}" >>"$LOG"
+      # Get first element from matrices
+      # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+    # For RAID on LUKS
+    elif [ "$(cat /proc/mdstat | grep "$(basename "$dev")" | awk '{print $1}')" = "$(basename "$dev")" ] &&
+      ls -d /dev/mapper/crypt_* 2>/dev/null|grep '[0-9]'| grep -q crypt; then
+        disk_name=$(for s in /sys/class/block/$(basename "$(readlink -f "$dev")")/slaves/*; do
+          _dev=$(basename "$s")
+          if echo $_dev | grep -q dm; then
+            for s in /sys/class/block/$_dev/slaves/*; do
+              _dev=$(basename "$s")
+              parent=$(lsblk -ndo pkname /dev/"$_dev")
+              if [ -n "$parent" ]; then
+                echo "$parent"
+              fi
+            done | sort -u
+           else
+            parent=$(lsblk -ndo pkname /dev/"$_dev")
+            if [ -n "$parent" ]; then
+              echo "$parent"
+            fi
+          fi
+        done | sort -u)
+      echo -e "For RAID+LUKS are used next disks:\n ${bold}$disk_name${reset}" >>"$LOG"
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      echo "Determine type of disk (SSD/HDD) is used for ${bold}${_map[0]}${reset}" >>"$LOG"
+      # Get first element from matrices
+      # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+    # For LUKS on RAID
+    elif ls -d /dev/mapper/crypt_* 2>/dev/null|grep '[0-9]'| grep -q "$dev" && cat /proc/mdstat |
+      grep -q $(for s in /sys/class/block/"$(basename "$(readlink -f "$dev")")"/slaves/*; do
+          echo "${s##*/}"
+        done) ; then
+      md=$(for m in /sys/block/"$(basename $(readlink -f $(ls -d /dev/mapper/crypt_* 2>/dev/null|grep '[0-9]'| grep "$dev")))"/slaves/*; do
+        echo "/dev/${m##*/}"
+        done)
+      disk_name=$(for s in /sys/class/block/$(basename "$(readlink -f "$md")")/slaves/*; do
+        _dev=$(basename "$s")
+        if echo $_dev | grep -q md; then
+          for s in /sys/class/block/$_dev/slaves/*; do
+            _dev=$(basename "$s")
+            parent=$(lsblk -ndo pkname /dev/"$_dev")
+            if [ -n "$parent" ]; then
+              echo "$parent"
+            fi
+          done | sort -u
+        else
+          parent=$(lsblk -ndo pkname /dev/"$_dev")
+          if [ -n "$parent" ]; then
+            echo "$parent"
+          fi
+        fi
+      done | sort -u)
+      echo -e "For LUKS+RAID are used next disks:\n${bold}$disk_name${reset}" >>"$LOG"
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      echo "Determine type of disk (SSD/HDD) is used for ${bold}${_map[0]}${reset}""$LOG"
+      # Get first element from matrices
+      # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+    # For LVM
+    elif lvs --noheadings|while read -r lvname vgname perms size; do
+      echo "/dev/mapper/${vgname}-${lvname}"; done | grep -q "$dev"; then
       disk_name=$(lsblk -ndo pkname $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}') | sort -u)
-      echo "For LVM is used disk(s) ${bold}$disk_name${reset}" >>"$LOG"
+      echo -e "For LVM is/are used disk(s):\n ${bold}$disk_name${reset}" >>"$LOG"
       # Read every line from disk_name into matrices
       mapfile -t _map <<< "$disk_name"
-      echo "Determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
+      echo "Determine type of disk (SSD/HDD) is used for ${bold}${_map[0]}${reset}" >>"$LOG"
       # Get first element from matrices
       # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
       disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
-    elif [ "$_crypt" -eq 1 ] && [ "$_lvm" -eq 0 ]; then # For LUKS
+    # For LUKS
+    elif ls -d /dev/mapper/crypt_* 2>/dev/null|grep '[0-9]'| grep -q "$dev"; then
       disk_name=$(lsblk -ndo pkname "$(
         for s in /sys/class/block/"$(basename "$(readlink -f "$dev")")"/slaves/*; do
           echo "/dev/${s##*/}"
@@ -1999,10 +2306,42 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       )")
       echo "For LUKS, to determine type of disk (SSD/HDD) is used ${bold}$disk_name${reset}" >>"$LOG"
       disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
-    else # For all over
+    # For RAID
+    elif [ "$(cat /proc/mdstat | grep "$(basename "$dev")" | awk '{print $1}')" = "$(basename "$dev")" ]; then
+      disk_name=$(for s in /sys/class/block/$(basename "$(readlink -f "$dev")")/slaves/*; do
+        _dev=$(basename "$s")
+        if echo $_dev | grep -q md; then
+          for s in /sys/class/block/$_dev/slaves/*; do
+            _dev=$(basename "$s")
+            parent=$(lsblk -ndo pkname /dev/"$_dev")
+            if [ -n "$parent" ]; then
+              echo "$parent"
+            fi
+          done | sort -u
+        else
+          parent=$(lsblk -ndo pkname /dev/"$_dev")
+          if [ -n "$parent" ]; then
+            echo "$parent"
+          fi
+        fi
+      done | sort -u)
+      echo -e "For RAID are used next disks:\n${bold}$disk_name${reset}" >>"$LOG"
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      echo "Determine type of disk (SSD/HDD) is used for ${bold}${_map[0]}${reset}" >>"$LOG"
+      # Get first element from matrices
+      # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+    # For all over
+    else
       disk_name=$(lsblk -ndo pkname "$dev")
       echo "Determine type of disk (SSD/HDD) is used ${bold}$disk_name${reset}" >>"$LOG"
-      disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
+      if [ -z "$disk_name" ]; then
+        echo "I can't determine the disk_name, so I used defaults mount options for SSD" >>"$LOG"
+        disk_type=0
+      else
+        disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
+      fi
     fi
     # Prepare options for mount command for HDD or SSD, but first check if is HDD
     if [ "$disk_type" -eq 1 ]; then # So it's HDD
@@ -2014,6 +2353,9 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
         options="defaults,noatime,nodiratime,user_xattr"
       elif [ "$fstype" = "f2fs" ]; then
         options="defaults"
+      elif [ "$fstype" = "f2fs_c" ]; then
+        options="compress_algorithm=zstd:6,compress_chksum,atgc,gc_merge,lazytime"
+        fstype="f2fs" # to be used on fstab
       fi
       echo "Options, for root filesystem ${bold}$fstype${reset}, used for mount and fstab
        ${bold}$options${reset} on ${bold}HDD${reset}" >>"$LOG"
@@ -2026,6 +2368,9 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
         options="defaults,noatime,nodiratime,discard,ssd,user_xattr"
       elif [ "$fstype" = "f2fs" ]; then
         options="defaults"
+      elif [ "$fstype" = "f2fs_c" ]; then
+        options="compress_algorithm=zstd:6,compress_chksum,atgc,gc_merge,lazytime"
+        fstype="f2fs" # to be used on fstab
       fi
       echo "Options, for root filesystem ${bold}$fstype${reset}, used for mount and fstab
        ${bold}$options${reset} on ${bold}SSD${reset}" >>"$LOG"
@@ -2053,7 +2398,7 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
     fi
     # Add entry to target on fstab for /
     uuid=$(blkid -o value -s UUID "$dev")
-    if [ "$fstype" = "f2fs" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "xfs" ]; then
+    if [ "$fstype" = "f2fs" ] || [ "$fstype" = "f2fs_c" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "xfs" ]; then
       # Not fsck at boot for f2fs, btrfs and xfs these have their check utility
       fspassno=0
     else
@@ -2081,9 +2426,15 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
     dev=$2; fstype=$3; mntpt="$5"
     shift 6
     [ "$mntpt" = "/" ] || [ "$fstype" = "swap" ] && continue
-    mkdir -p ${TARGETDIR}${mntpt}
+    mkdir -p ${TARGETDIR}${mntpt} >>"$LOG" 2>&1
     echo "Mounting ${bold}$dev${reset} on ${bold}$mntpt${reset} ($fstype)..." >>"$LOG"
-    mount -t "$fstype" "$dev" ${TARGETDIR}${mntpt} >>"$LOG" 2>&1
+    if [ "$fstype" != "f2fs_c" ]; then
+         mount -t "$fstype" "$dev" ${TARGETDIR}${mntpt} >>"$LOG" 2>&1
+      else
+        mount -t f2fs -o compress_algorithm=zstd:6,compress_chksum,atgc,gc_merge,lazytime "$dev" ${TARGETDIR}${mntpt} >>"$LOG" 2>&1
+        echo "Run ${bold}chattr -R -V +c $TARGETDIR${reset}" >>"$LOG"
+        chattr -R -V +c ${TARGETDIR}${mntpt}  >>"$LOG" 2>&1
+    fi
     rv=$?
     if [ "$rv" -ne 0 ]; then
       DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET} \
@@ -2091,13 +2442,64 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       DIE
     fi
     # Check if was mounted HDD or SSD
-    # Some part of code is not used (for LVM, LVM+LUKS) now because I have only 2 logical volume: vg0-lvbrgvos for rootfs /
-    # and vg0-lvswap for swap, but I added for future, I which to add more volume for example vgo-lvhome for /home
     echo "For device ${bold}$dev${reset}" >>"$LOG"
-    if [[ $dev != /dev/mapper/* ]]; then # Check if device is not listed on /dev/mapper/
-      disk_name=$(lsblk -ndo pkname "$dev")
-      disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
-    elif [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 1 ]; then # For LVM on LUKS
+    # For LVM on RAID on LUKS
+    if $(lvs --noheadings|while read -r lvname vgname perms size; do
+      echo "/dev/mapper/${vgname}-${lvname}"; done | grep -q "$dev" &&
+      lvdisplay -m $dev 2>/dev/null| awk '/^    Physical volume/ {print $3}'| grep -q md) &&
+      $(cat /proc/mdstat | grep $(basename $(lvdisplay -m $dev | awk '/^    Physical volume/ {print $3}')) | grep -q dm); then
+      # Get the name of RAID
+      md=$(lvdisplay -m $dev | awk '/^    Physical volume/ {print $3}'| grep md)
+      # Get encrypt devices from the RAID
+      dm=$(mdadm --detail $md | awk '{print $8}' | grep /dev/dm)
+      echo -e "For LVM+RAID+LUKS are used RAID: ${bold}$md${reset} with encrypted blocks:\n${bold}$dm${reset}" >>"$LOG"
+      disk_name=$(lsblk -ndo pkname "$(for s in /sys/block/$(basename "$dm")/slaves/*; do
+        echo "/dev/${s##*/}"
+          done)")
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      mapfile -t _dm <<< "$dm"
+      echo "Determine type of disk for ${bold}${_map[0]}${reset} used for block ${bold}${_dm[0]}${reset}" >>"$LOG"
+      # Get first element from matrices
+      # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+    # For LVM on LUKS on RAID
+    elif lvdisplay -m $dev 2>/dev/null| awk '/^    Physical volume/ {print $3}'| grep -q crypt &&
+      ls /sys/class/block/$(basename $(readlink -f  /dev/mapper/crypt_0))/slaves/ | grep -q md ; then
+      md=$(
+        for pv in $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}' | sort -u); do
+          dm=$(basename "$(readlink -f "$pv")")
+          for s in /sys/class/block/$dm/slaves/*; do
+            echo "/dev/${s##*/}"
+          done
+        done
+      )
+      disk_name=$(for s in /sys/class/block/$(basename "$(readlink -f "$md")")/slaves/*; do
+        _dev=$(basename "$s")
+        if echo $_dev | grep -q md; then
+          for s in /sys/class/block/$_dev/slaves/*; do
+            _dev=$(basename "$s")
+            parent=$(lsblk -ndo pkname /dev/"$_dev")
+            if [ -n "$parent" ]; then
+              echo "$parent"
+            fi
+          done | sort -u
+        else
+          parent=$(lsblk -ndo pkname /dev/"$_dev")
+          if [ -n "$parent" ]; then
+            echo "$parent"
+          fi
+        fi
+      done | sort -u)
+      echo -e "For LVM+LUKS+RAID are used next disks:\n${bold}$disk_name${reset}" >>"$LOG"
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      echo "Determine type of disk (SSD/HDD) is used for ${bold}${_map[0]}${reset}" >>"$LOG"
+      # Get first element from matrices
+      # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+    # For LVM on LUKS
+    elif lvdisplay -m $dev 2>/dev/null| awk '/^    Physical volume/ {print $3}'| grep -q crypt; then
       disk_name=$(lsblk -ndo pkname $(
         for pv in $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}' | sort -u); do
           dm=$(basename "$(readlink -f "$pv")")
@@ -2106,13 +2508,99 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
           done
         done
       ) | sort -u)
-      echo "For LVM+LUKS is used disk(s) ${bold}$disk_name${reset}" >>"$LOG"
+      echo -e "For LVM+LUKS is/are used disk(s):\n ${bold}$disk_name${reset}" >>"$LOG"
       # Read every line from disk_name into matrices
       mapfile -t _map <<< "$disk_name"
       # Get element from matrices
       disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
       echo "Determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
-    elif [ "$_lvm" -eq 1 ] && [ "$_crypt" -eq 0 ]; then # For LVM
+    # For LVM on RAID
+    elif lvs --noheadings|while read -r lvname vgname perms size; do
+      echo "/dev/mapper/${vgname}-${lvname}"; done | grep -q "$dev" &&
+      lvdisplay -m "$dev" 2>/dev/null| awk '/^    Physical volume/ {print $3}'| grep -q md; then
+        md=$(
+          for pv in $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}' | sort -u); do
+            dm=$(basename "$(readlink -f "$pv")")
+            for s in /sys/class/block/"$dm"/slaves/*; do
+              echo "/dev/${s##*/}"
+            done
+          done
+        )
+        disk_name=$(for s in $md; do
+                      parent=$(lsblk -ndo pkname "$s")
+                        if [ -n "$parent" ]; then
+                          echo "$parent"
+                        fi
+                   done)
+      echo -e "For LVM+RAID are used next disks:\n${bold}$disk_name${reset}" >>"$LOG"
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      echo "Determine type of disk (SSD/HDD) is used for ${bold}${_map[0]}${reset}" >>"$LOG"
+      # Get first element from matrices
+      # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+    # For RAID on LUKS
+    elif [ "$(cat /proc/mdstat | grep "$(basename "$dev")" | awk '{print $1}')" = "$(basename "$dev")" ] &&
+      ls -d /dev/mapper/crypt_* 2>/dev/null|grep '[0-9]'| grep -q crypt; then
+        disk_name=$(for s in /sys/class/block/$(basename "$(readlink -f "$dev")")/slaves/*; do
+          _dev=$(basename "$s")
+          if echo $_dev | grep -q dm; then
+            for s in /sys/class/block/$_dev/slaves/*; do
+              _dev=$(basename "$s")
+              parent=$(lsblk -ndo pkname /dev/"$_dev")
+              if [ -n "$parent" ]; then
+                echo "$parent"
+              fi
+            done | sort -u
+           else
+            parent=$(lsblk -ndo pkname /dev/"$_dev")
+            if [ -n "$parent" ]; then
+              echo "$parent"
+            fi
+          fi
+        done | sort -u)
+      echo -e "For RAID+LUKS are used disks:\n ${bold}$disk_name${reset}" >>"$LOG"
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      echo "Determine type of disk used (SSD/HDD) for ${bold}${_map[0]}${reset}" >>"$LOG"
+      # Get first element from matrices
+      # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+    # For LUKS on RAID
+    elif ls -d /dev/mapper/crypt_* 2>/dev/null|grep '[0-9]'| grep -q "$dev" && cat /proc/mdstat |
+      grep -q $(for s in /sys/class/block/"$(basename "$(readlink -f "$dev")")"/slaves/*; do
+          echo "${s##*/}"
+        done) ; then
+      md=$(for m in /sys/block/"$(basename $(readlink -f $(ls -d /dev/mapper/crypt_* 2>/dev/null|grep '[0-9]'| grep "$dev")))"/slaves/*; do
+        echo "/dev/${m##*/}"
+        done)
+      disk_name=$(for s in /sys/class/block/$(basename "$(readlink -f "$md")")/slaves/*; do
+        _dev=$(basename "$s")
+        if echo $_dev | grep -q md; then
+          for s in /sys/class/block/$_dev/slaves/*; do
+            _dev=$(basename "$s")
+            parent=$(lsblk -ndo pkname /dev/"$_dev")
+            if [ -n "$parent" ]; then
+              echo "$parent"
+            fi
+          done | sort -u
+        else
+          parent=$(lsblk -ndo pkname /dev/"$_dev")
+          if [ -n "$parent" ]; then
+            echo "$parent"
+          fi
+        fi
+      done | sort -u)
+      echo -e "For LUKS+RAID are used next disks:\n${bold}$disk_name${reset}"
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      echo "Determine type of disk (SSD/HDD) is used for ${bold}${_map[0]}${reset}"
+      # Get first element from matrices
+      # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+    # For LVM
+    elif lvs --noheadings|while read -r lvname vgname perms size; do
+      echo "/dev/mapper/${vgname}-${lvname}"; done | grep -q "$dev"; then
       disk_name=$(lsblk -ndo pkname $(lvdisplay -m "$dev" | awk '/^    Physical volume/ {print $3}') | sort -u)
       echo "For LVM is used disk(s) ${bold}$disk_name${reset}" >>"$LOG"
       # Read every line from disk_name into matrices
@@ -2120,22 +2608,55 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
       echo "Determine type of disk (SSD/HDD) is used ${bold}${_map[0]}${reset}" >>"$LOG"
       # Get element from matrices
       disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
-    elif [ "$_crypt" -eq 1 ] && [ "$_lvm" -eq 0 ]; then # For LUKS
+    # For LUKS
+    elif ls -d /dev/mapper/crypt_* 2>/dev/null|grep '[0-9]'| grep -q "$dev"; then
       disk_name=$(lsblk -ndo pkname "$(
         for s in /sys/class/block/"$(basename "$(readlink -f "$dev")")"/slaves/*; do
           echo "/dev/${s##*/}"
         done
       )")
-      echo "For LUKS, to determine type of disk (SSD/HDD) is used ${bold}$disk_name${reset}" >>"$LOG"
+      echo -e "For LUKS, to determine type of disk (SSD/HDD) is used:\n${bold}$disk_name${reset}" >>"$LOG"
       disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
-    else # For all over, if exist :)
+    # For RAID
+    elif [ "$(cat /proc/mdstat | grep "$(basename "$dev")" | awk '{print $1}')" = "$(basename "$dev")" ]; then
+      disk_name=$(for s in /sys/class/block/$(basename "$(readlink -f "$dev")")/slaves/*; do
+        _dev=$(basename "$s")
+        if echo $_dev | grep -q md; then
+          for s in /sys/class/block/$_dev/slaves/*; do
+            _dev=$(basename "$s")
+            parent=$(lsblk -ndo pkname /dev/"$_dev")
+            if [ -n "$parent" ]; then
+              echo "$parent"
+            fi
+          done | sort -u
+        else
+          parent=$(lsblk -ndo pkname /dev/"$_dev")
+          if [ -n "$parent" ]; then
+            echo "$parent"
+          fi
+        fi
+      done | sort -u)
+      echo -e "For RAID are used disks:\n${bold}$disk_name${reset}" >>"$LOG"
+      # Read every line from disk_name into matrices
+      mapfile -t _map <<< "$disk_name"
+      echo "Determine type of disk used (SSD/HDD) for ${bold}${_map[0]}${reset}" >>"$LOG"
+      # Get first element from matrices
+      # I take in consideration only first disk (consider all disk are the same type HDD or SSD)
+      disk_type=$(cat /sys/block/"${_map[0]}"/queue/rotational)
+    # For all over
+    else
       disk_name=$(lsblk -ndo pkname "$dev")
-      echo "Determine type of disk (SSD/HDD) is used ${bold}$disk_name${reset}" >>"$LOG"
-      disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
+      echo "Determine type of disk (SSD/HDD) is used for ${bold}$disk_name${reset}" >>"$LOG"
+      if [ -z "$disk_name" ]; then
+        echo "I can't determine the disk_name, so I used defaults mount options for SSD" >>"$LOG"
+        disk_type=0
+      else
+        disk_type=$(cat /sys/block/"$disk_name"/queue/rotational)
+      fi
     fi
     # Add entry to target fstab
     uuid=$(blkid -o value -s UUID "$dev")
-    if [ "$fstype" = "f2fs" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "xfs" ]; then
+    if [ "$fstype" = "f2fs" ] || [ "$fstype" = "f2fs_c" ] || [ "$fstype" = "btrfs" ] || [ "$fstype" = "xfs" ]; then
       fspassno=0 # Not use fsck at boot for f2fs, btrfs and xfs these have their check utility
     elif [ "$mntpt" = "/boot/efi" ]; then
       fspassno=1 # Set to check fsck at boot this device first (to be mounted /boot/efi)
@@ -2152,6 +2673,9 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
         options="defaults,noatime,nodiratime,user_xattr"
       elif [ "$fstype" = "f2fs" ]; then
         options="defaults"
+      elif [ "$fstype" = "f2fs_c" ]; then
+        options="compress_algorithm=zstd:6,compress_chksum,atgc,gc_merge,lazytime"
+        fstype="f2fs" # to be used on fstab
       elif [ "$fstype" = "vfat" ]; then
         if [ -n "$_raid" ] && [ "$mntpt" = "/boot/efi" ]; then # Check if was selected RAID and set noauto for /boot/efi for RAID
           options="defaults,noauto"
@@ -2171,6 +2695,9 @@ failed to mount ${BOLD}$dev${RESET} on ${BOLD}${mntpt}${RESET}! check $LOG for e
         options="defaults,noatime,nodiratime,discard,ssd,user_xattr"
       elif [ "$fstype" = "f2fs" ]; then
         options="defaults"
+      elif [ "$fstype" = "f2fs_c" ]; then
+        options="compress_algorithm=zstd:6,compress_chksum,atgc,gc_merge,lazytime"
+        fstype="f2fs" # to be used on fstab
       elif [ "$fstype" = "vfat" ]; then
         if [ -n "$_raid" ] && [ "$mntpt" = "/boot/efi" ]; then # Check if was selected RAID and set noauto for /boot/efi for RAID
           options="defaults,noauto"
@@ -2248,12 +2775,11 @@ log_and_count() {
   while read line; do
     echo "$line" >>$LOG
     copy_count=$((copy_count + 1))
-    progress=$((1000 * copy_count / copy_total))
+    progress=$((100 * copy_count / copy_total))
     if [ "$progress" != "$copy_progress" ]; then
-      whole=$((progress / 10))
-      tenth=$((progress % 10))
-      printf "Progress: %d.%d%% (%d of %d files)\n" $whole $tenth $copy_count $copy_total
       copy_progress=$progress
+      echo $progress | \
+      GAUGE "Copying live image to target rootfs.\n\n    Total files: ${copy_total}\n  Written files: ${copy_count}" 10 80
     fi
   done
 }
@@ -2268,9 +2794,7 @@ copy_rootfs() {
   clear
   tar ${tar_in} -f - / 2>/dev/null | \
     tar --extract --xattrs --xattrs-include='*' --preserve-permissions -v -f - -C $TARGETDIR | \
-    log_and_count | \
-    DIALOG --title "${TITLE}" \
-      --progressbox "Copying live image to target rootfs." 5 80
+    log_and_count
   if [ $? -ne 0 ]; then
     DIE 1
   fi
@@ -2373,11 +2897,11 @@ menu_install() {
   BOOTLOADER_DONE="$(get_option BOOTLOADER)"
 
   if [ -z "$ROOTPASSWORD_DONE" ]; then
-    DIALOG --msgbox "${BOLD}The root password has not been configured, \
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET}${BOLD}The root password has not been configured, \
 please do so before starting the installation.${RESET}" ${MSGBOXSIZE}
     return 1
   elif [ -z "$BOOTLOADER_DONE" ]; then
-    DIALOG --msgbox "${BOLD}The disk to install the bootloader has not been \
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET}${BOLD}The disk to install the bootloader has not been \
 configured, please do so before starting the installation.${RESET}" ${MSGBOXSIZE}
     return 1
   fi
@@ -2387,7 +2911,7 @@ configured, please do so before starting the installation.${RESET}" ${MSGBOXSIZE
   validate_filesystems || return 1
 
   if [ -z "$FILESYSTEMS_DONE" ]; then
-    DIALOG --msgbox "${BOLD}Required filesystems were not configured, \
+    DIALOG --msgbox "${BOLD}${RED}ERROR:${RESET}${BOLD}Required filesystems were not configured, \
 please do so before starting the installation.${RESET}" ${MSGBOXSIZE}
     return 1
   fi
@@ -2541,7 +3065,7 @@ ${BOLD}Do you want to continue?${RESET}" 20 80 || return
   umount_filesystems
 
   # installed successfully.
-  DIALOG --yesno "${BOLD}BRGV-OS Linux has been installed successfully!${RESET}\n
+  DIALOG --yesno "${BOLD}${GREEN}BRGV-OS Linux has been installed successfully!${RESET}\n
 Do you want to reboot the system?" ${YESNOSIZE}
   if [ $? -eq 0 ]; then
     shutdown -r now
@@ -2601,8 +3125,8 @@ menu() {
       "UserAccount" "Set primary user name and password" \
       "BootLoader" "Set disk to install bootloader" \
       "Partition" "Partition disk(s)" \
-      "Raid" "Raid software" \
       "LVM&LUKS" "Set LVM and crypto LUKS" \
+      "Raid" "Raid software" \
       "Filesystems" "Configure filesystems and mount points" \
       "Install" "Start installation with saved settings" \
       "Exit" "Exit installation"
@@ -2623,8 +3147,8 @@ menu() {
       "UserAccount" "Set primary user name and password" \
       "BootLoader" "Set disk to install bootloader" \
       "Partition" "Partition disk(s)" \
-      "Raid" "Raid software" \
       "LVM&LUKS" "Set LVM and crypto LUKS" \
+      "Raid" "Raid software" \
       "Filesystems" "Configure filesystems and mount points" \
       "Install" "Start installation with saved settings" \
       "Exit" "Exit installation"
@@ -2652,13 +3176,13 @@ menu() {
   "UserAccount") menu_useraccount && [ -n "$USERLOGIN_DONE" ] && [ -n "$USERPASSWORD_DONE" ] \
     && DEFITEM="BootLoader";;
   "BootLoader") menu_bootloader && [ -n "$BOOTLOADER_DONE" ] && DEFITEM="Partition";;
-  "Partition") menu_partitions && [ -n "$PARTITIONS_DONE" ] && DEFITEM="Raid";;
-  "Raid") menu_raid && [ -n "$RAID_DONE" ] && DEFITEM="LVM&LUKS";;
-  "LVM&LUKS") menu_lvm_luks && [ -n "$LVMLUKS_DONE" ] && DEFITEM="Filesystems";;
+  "Partition") menu_partitions && [ -n "$PARTITIONS_DONE" ] && DEFITEM="LVM&LUKS";;
+  "LVM&LUKS") menu_lvm_luks && [ -n "$LVMLUKS_DONE" ] && DEFITEM="Raid";;
+  "Raid") menu_raid && [ -n "$RAID_DONE" ] && DEFITEM="Filesystems";;
   "Filesystems") menu_filesystems && [ -n "$FILESYSTEMS_DONE" ] && DEFITEM="Install";;
   "Install") menu_install;;
   "Exit") DIE;;
-  *) DIALOG --yesno "Abort Installation?" ${YESNOSIZE} && DIE
+  *) DIALOG --yesno "${RED}Abort Installation?${RESET}" ${YESNOSIZE} && DIE
   esac
 }
 
