@@ -3128,6 +3128,7 @@ menu() {
       "Timezone" "Set system time zone" \
       "RootPassword" "Set system root password" \
       "UserAccount" "Set primary user name and password" \
+      "Hardening" "Set hardening settings" \
       "BootLoader" "Set disk to install bootloader" \
       "Partition" "Partition disk(s)" \
       "LVM&LUKS" "Set LVM and crypto LUKS" \
@@ -3150,6 +3151,7 @@ menu() {
       "Timezone" "Set system time zone" \
       "RootPassword" "Set system root password" \
       "UserAccount" "Set primary user name and password" \
+      "Hardening" "Set hardening settings" \
       "BootLoader" "Set disk to install bootloader" \
       "Partition" "Partition disk(s)" \
       "LVM&LUKS" "Set LVM and crypto LUKS" \
@@ -3178,8 +3180,8 @@ menu() {
   "Locale") menu_locale && [ -n "$LOCALE_DONE" ] && DEFITEM="Timezone";;
   "Timezone") menu_timezone && [ -n "$TIMEZONE_DONE" ] && DEFITEM="RootPassword";;
   "RootPassword") menu_rootpassword && [ -n "$ROOTPASSWORD_DONE" ] && DEFITEM="UserAccount";;
-  "UserAccount") menu_useraccount && [ -n "$USERLOGIN_DONE" ] && [ -n "$USERPASSWORD_DONE" ] \
-    && DEFITEM="BootLoader";;
+  "UserAccount") menu_useraccount && [ -n "$USERLOGIN_DONE" ] && [ -n "$USERPASSWORD_DONE" ] && DEFITEM="Hardening";;
+  "Hardening") menu_hardening && DEFITEM="BootLoader";;
   "BootLoader") menu_bootloader && [ -n "$BOOTLOADER_DONE" ] && DEFITEM="Partition";;
   "Partition") menu_partitions && [ -n "$PARTITIONS_DONE" ] && DEFITEM="LVM&LUKS";;
   "LVM&LUKS") menu_lvm_luks && [ -n "$LVMLUKS_DONE" ] && DEFITEM="Raid";;
