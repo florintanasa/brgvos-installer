@@ -191,6 +191,7 @@ USERPASSWORD_DONE=
 USERNAME_DONE=
 USERGROUPS_DONE=
 USERACCOUNT_DONE=
+HARDENING_DONE=
 BOOTLOADER_DONE=
 PARTITIONS_DONE=
 RAID_DONE=
@@ -319,6 +320,8 @@ DIE() {
   set_option RAID "" # clear RAID value
   set_option RAIDPV "" # clear RAIDPV value
   set_option INDEXRAID "" # clear INDEXRAID value
+  set_option APPARMOUR "" # clear APPARMOUR value
+  set_option HARDENING "" # cleat HARDENING value
   rm -f "$ANSWER" "$TARGET_FSTAB" "$TARGET_SERVICES"
   # re-enable printk
   if [ -w /proc/sys/kernel/printk ]; then
