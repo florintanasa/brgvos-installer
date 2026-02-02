@@ -764,32 +764,55 @@ show_partitions_filtered() {
 # Function for menu Hardening
 menu_hardening() {
   # Define some local variables
-  local _desc _checklist _answers rv
+  local _desc _checklist _answers rv _apparmour _hardening _state_armour _state_hardening
+  # Loading local variable from config file
+  _apparmour=$(get_option APPARMOUR)
+  if [[ "$_apparmour" -eq 1 ]]; then
+    _state_armour="on"
+  else
+    _state_armour="off"
+  fi
+  _hardening=$(get_option HARDENING)
+  if [[ "$_hardening" -eq 1 ]]; then
+    _state_hardening="on"
+  else
+    _state_hardening="off"
+  fi
   # Description for checklist box
   _desc="Select if you wish to setting AppArmour and hardening"
   # Description for checklist box
   _checklist="
-  apparmour AppArmour off \
-  hardening Hardening off"
+  apparmour AppArmour $_state_armour \
+  hardening Hardening $_state_hardening"
   # Create dialog
   DIALOG --no-tags --checklist "$_desc" 20 60 2 ${_checklist}
   # Verify if the user accept the dialog
   rv=$?
   if [ "$rv" -eq 0 ]; then
     _answers=$(cat "$ANSWER")
-    if echo "$ANSWER" | grep -q "apparmour"; then
-        set_option APPARMOUR "1"
+    if echo "$_answers" | grep -q "apparmour"; then
+      set_option APPARMOUR "1"
     else
       set_option APPARMOUR "0"
     fi
-    if echo "$ANSWER" | grep -q "hardening"; then
-        set_option HARDENING "1"
+    if echo "$_answers" | grep -q "hardening"; then
+      set_option HARDENING "1"
     else
       set_option HARDENING "0"
     fi
   elif [ "$rv" -eq 1 ]; then # Verify is user not accept the dialog
     return
   fi
+  # Check if user select APPARMOUR
+  if [ "$_apparmour" -eq 1 ]; then
+    echo "User select AppArmour" >> "$LOG"
+  fi
+  if [ "$_hardening" -eq 1 ]; then
+    echo "User select Hardening" >> "$LOG"
+  fi
+
+  # set hardening done
+  HARDENING_DONE=1
 }
 
 # Function for menu LVM&LUKS
