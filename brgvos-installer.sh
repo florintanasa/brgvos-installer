@@ -1843,7 +1843,7 @@ set_bootloader() {
     DIE 1
   fi
   echo "Preparing the Logo and name in the grub menu ${bold}$TARGETDIR/etc/default/grub${reset}..." >>$LOG
-  # Copy file splash.png on /boot/grub/baackground to can see by the grub when we install on encrypted rootfs
+  # Copy file splash.png on /boot/grub/background to can see by the grub when we install on encrypted rootfs
   chroot $TARGETDIR mkdir -p /boot/grub/background >> $LOG 2>&1
   chroot $TARGETDIR cp /usr/share/brgvos-artwork/splash.png /boot/grub/background/ >> $LOG 2>&1
   chroot $TARGETDIR sed -i 's+#GRUB_BACKGROUND=/usr/share/void-artwork/splash.png+GRUB_BACKGROUND=/boot/grub/background/splash.png+g' /etc/default/grub >>$LOG 2>&1
