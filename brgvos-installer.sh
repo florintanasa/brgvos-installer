@@ -320,7 +320,7 @@ DIE() {
   set_option RAID "" # clear RAID value
   set_option RAIDPV "" # clear RAIDPV value
   set_option INDEXRAID "" # clear INDEXRAID value
-  set_option APPARMOUR "" # clear APPARMOUR value
+  set_option APPARMOR "" # clear APPARMOR value
   set_option HARDENING "" # cleat HARDENING value
   rm -f "$ANSWER" "$TARGET_FSTAB" "$TARGET_SERVICES"
   # re-enable printk
@@ -764,13 +764,13 @@ show_partitions_filtered() {
 # Function for menu Hardening
 menu_hardening() {
   # Define some local variables
-  local _desc _checklist _answers rv _apparmour _hardening _state_armour _state_hardening
+  local _desc _checklist _answers rv _apparmor _hardening _state_armor _state_hardening
   # Loading local variable from config file
-  _apparmour=$(get_option APPARMOUR)
-  if [[ "$_apparmour" -eq 1 ]]; then
-    _state_armour="on"
+  _apparmor=$(get_option APPARMOR)
+  if [[ "$_apparmor" -eq 1 ]]; then
+    _state_armor="on"
   else
-    _state_armour="off"
+    _state_armor="off"
   fi
   _hardening=$(get_option HARDENING)
   if [[ "$_hardening" -eq 1 ]]; then
@@ -779,10 +779,10 @@ menu_hardening() {
     _state_hardening="off"
   fi
   # Description for checklist box
-  _desc="Select if you wish to setting AppArmour and hardening"
+  _desc="Select if you wish to setting AppArmor and hardening"
   # Description for checklist box
   _checklist="
-  apparmour AppArmour $_state_armour \
+  apparmor AppArmor $_state_armor \
   hardening Hardening $_state_hardening"
   # Create dialog
   DIALOG --no-tags --checklist "$_desc" 20 60 2 ${_checklist}
@@ -790,10 +790,10 @@ menu_hardening() {
   rv=$?
   if [ "$rv" -eq 0 ]; then
     _answers=$(cat "$ANSWER")
-    if echo "$_answers" | grep -q "apparmour"; then
-      set_option APPARMOUR "1"
+    if echo "$_answers" | grep -q "apparmor"; then
+      set_option APPARMOR "1"
     else
-      set_option APPARMOUR "0"
+      set_option APPARMOR "0"
     fi
     if echo "$_answers" | grep -q "hardening"; then
       set_option HARDENING "1"
@@ -803,9 +803,9 @@ menu_hardening() {
   elif [ "$rv" -eq 1 ]; then # Verify is user not accept the dialog
     return
   fi
-  # Check if user select APPARMOUR
-  if [ "$_apparmour" -eq 1 ]; then
-    echo "User select AppArmour" >> "$LOG"
+  # Check if user select APPARMOR
+  if [ "$_apparmor" -eq 1 ]; then
+    echo "User select AppArmor" >> "$LOG"
   fi
   if [ "$_hardening" -eq 1 ]; then
     echo "User select Hardening" >> "$LOG"
