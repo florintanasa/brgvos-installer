@@ -1753,11 +1753,12 @@ menu_bootloader() {
 # Function to set bootloader from loaded saved configure file
 set_bootloader() {
   # Declare some local variables
-  local dev _encrypt _rootfs _bool bool index _boot _rd_luks_uuid _crypts
+  local dev _encrypt _rootfs _bool bool index _boot _rd_luks_uuid _crypts _apparmor
   local -a luks_devices # Declare matrices
   # Initialise variables
   dev=$(get_option BOOTLOADER)
   _crypts=$(get_option CRYPTS)
+  _apparmor=$(get_option APPARMOR)
   grub_args=
   bool=0
   _bool=0
@@ -1856,6 +1857,14 @@ set_bootloader() {
     chroot $TARGETDIR sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4\"/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4 ${RD_MD_UUID} ${_rd_luks_uuid} quiet splash\"/g" /etc/default/grub >>$LOG 2>&1
   fi
   chroot $TARGETDIR sed -i '$aGRUB_DISABLE_OS_PROBER=false' /etc/default/grub >>$LOG 2>&1
+  # Check if the user set to use AppArmor
+  if [ "$_apparmor" -eq 1 ]; then # If yes, enable AppArmor in kernel parameters to be loaded in Enforce mode
+    echo "Security AppArmor was set to be loaded by kernel in Enforce mode" >>$LOG
+    {
+      chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\([^"]*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 apparmor=1 security=apparmor"/' /etc/default/grub
+      chroot $TARGETDIR sed -i 's/APPARMOR=complain/APPARMOR=enforce/g' /etc/default/apparmor
+    } >>$LOG 2>&1
+  fi
   echo "Running grub-mkconfig on ${bold}$TARGETDIR${reset}..." >>"$LOG"
   chroot $TARGETDIR grub-mkconfig -o /boot/grub/grub.cfg >>$LOG 2>&1
   # Build the Grub configure file and if not have success inform the user with a message dialog and exit from installer
