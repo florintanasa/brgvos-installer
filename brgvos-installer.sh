@@ -3159,7 +3159,7 @@ menu() {
       "Timezone" "Set system time zone" \
       "RootPassword" "Set system root password" \
       "UserAccount" "Set primary user name and password" \
-      "Hardening" "Set hardening settings" \
+      "Hardening" "Hardening settings" \
       "BootLoader" "Set disk to install bootloader" \
       "Partition" "Partition disk(s)" \
       "LVM&LUKS" "Set LVM and crypto LUKS" \
@@ -3182,7 +3182,7 @@ menu() {
       "Timezone" "Set system time zone" \
       "RootPassword" "Set system root password" \
       "UserAccount" "Set primary user name and password" \
-      "Hardening" "Set hardening settings" \
+      "Hardening" "Hardening settings" \
       "BootLoader" "Set disk to install bootloader" \
       "Partition" "Partition disk(s)" \
       "LVM&LUKS" "Set LVM and crypto LUKS" \
