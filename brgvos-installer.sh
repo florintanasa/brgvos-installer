@@ -758,6 +758,37 @@ show_partitions_filtered() {
   echo "$filtered_list"
 }
 
+# Function for menu Hardening
+menu_hardening() {
+  # Define some local variables
+  local _desc _checklist _answers rv
+  # Description for checklist box
+  _desc="Select if you wish to setting AppArmour and hardening"
+  # Description for checklist box
+  _checklist="
+  apparmour AppArmour off \
+  hardening Hardening off"
+  # Create dialog
+  DIALOG --no-tags --checklist "$_desc" 20 60 2 ${_checklist}
+  # Verify if the user accept the dialog
+  rv=$?
+  if [ "$rv" -eq 0 ]; then
+    _answers=$(cat "$ANSWER")
+    if echo "$ANSWER" | grep -q "apparmour"; then
+        set_option APPARMOUR "1"
+    else
+      set_option APPARMOUR "0"
+    fi
+    if echo "$ANSWER" | grep -q "hardening"; then
+        set_option HARDENING "1"
+    else
+      set_option HARDENING "0"
+    fi
+  elif [ "$rv" -eq 1 ]; then # Verify is user not accept the dialog
+    return
+  fi
+}
+
 # Function for menu LVM&LUKS
 menu_lvm_luks() {
   # Define some local variables
