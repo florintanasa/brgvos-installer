@@ -817,18 +817,39 @@ menu_hardening() {
   elif [ "$rv" -eq 1 ]; then # Verify is user not accept the dialog
     return
   fi
-
-  # Check if user select AppArmor, Audit, Hardening
-  if [ "$_apparmor" -eq 1 ]; then
-    echo "User select AppArmor" >> "$LOG"
-  fi
-  if [ "$_audit" -eq 1 ]; then
-    echo "User select Audit" >> "$LOG"
-  fi
+  _hardening=$(get_option HARDENING)
   if [ "$_hardening" -eq 1 ]; then
-    echo "User select Hardening" >> "$LOG"
+    # Build the list with options for hardening
+    _options=(
+      1 "# Restrict kernel pointer" off
+      2 "kernel.kptr_restrict=2" off
+    )
+    # Create a tag → label map (associative array)
+    declare -A label_for
+    for ((i=0; i<${#_options[@]}; i+=3)); do
+      _tag=${_options[i]}
+      _label=${_options[i+1]}
+      _label_for[$_tag]="$_label"
+    done
+    # Open form dialog
+    exec 3>&1
+    # Show the build list dialog
+    _raw=$(dialog --colors --keep-tite --no-shadow --no-mouse --title "Edit Options" \
+      --backtitle "${BOLD}${WHITE}BRGV-OS Linux installation -- https://github.com/florintanasa/brgvos-void (@@MKLIVE_VERSION@@)${RESET}" \
+      --buildlist "Select and edit the options you want:" 20 80 0 \
+      "${_options[@]}" 3>&1 1>&2 2>&3)
+    # Close form dialog
+    exec 3>&-
+    # Translate the returned tags back to their labels
+   _selected_tags=($_raw)               # split on whitespace
+    {
+      for _tag in "${_selected_tags[@]}"; do
+        # If the user removed an entry, the tag may no longer exist
+        # in the map – skip empty results.
+        [[ -n ${_label_for[$_tag]} ]] && printf '%s\n' "${_label_for[$_tag]}"
+      done
+    } > /tmp/choices.txt
   fi
-
   # set hardening done
   HARDENING_DONE=1
 }
