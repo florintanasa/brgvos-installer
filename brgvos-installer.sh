@@ -765,22 +765,23 @@ show_partitions_filtered() {
 # Function for menu Hardening
 menu_hardening() {
   # Define some local variables
-  local _desc _checklist _answers rv _apparmor _hardening _state_armor _state_hardening _audit _state_audit
+  local _desc _checklist _answers rv _apparmor _hardening _state_armor _state_hardening _audit _state_audit _options \
+    _tag _label _label_for _raw _selected_tags
   # Loading local variable from config file
   _apparmor=$(get_option APPARMOR)
-  if [ "$_apparmor" -eq 1 ]; then
+  if  [ -n "$_apparmor" ] && [ "$_apparmor" -eq 1 ]; then
     _state_armor="on"
   else
     _state_armor="off"
   fi
   _hardening=$(get_option HARDENING)
-  if [ "$_hardening" -eq 1 ]; then
+  if [ -n "$_hardening" ] && [ "$_hardening" -eq 1 ]; then
     _state_hardening="on"
   else
     _state_hardening="off"
   fi
   _audit=$(get_option AUDIT)
-  if [ "$_audit" -eq 1 ]; then
+  if [ -n "$_audit" ] && [ "$_audit" -eq 1 ]; then
     _state_audit="on"
   else
     _state_audit="off"
