@@ -832,6 +832,24 @@ menu_hardening() {
   HARDENING_DONE=1
 }
 
+# Function for setting audit
+set_audit() {
+  # Define some local variables
+  local _user
+  # Get username
+  _user=$(get_option USERLOGIN)
+  {
+    # Create group audit
+    chroot $TARGETDIR groupadd -r audit
+    # Add user to audit group
+    chroot $TARGETDIR gpasswd -a "$_user" audit
+    # Change log_group to audit
+    chroot $TARGETDIR sed -i 's/log_group = root/log_group = audit/g' /etc/audit/auditd.conf
+    # Change file mode and group for directory /var/log/audit
+    chroot $TARGETDIR sed -i 's/d \/var\/log\/audit 0700 root root - -/d \/var\/log\/audit 0750 root audit - -/g'  /usr/lib/tmpfiles.d/audit.conf
+  } >>$LOG 2>&1
+}
+
 # Function for menu LVM&LUKS
 menu_lvm_luks() {
   # Define some local variables
