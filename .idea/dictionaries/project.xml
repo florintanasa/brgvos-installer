@@ -4,6 +4,7 @@
       <w>addr</w>
       <w>agetty</w>
       <w>apparmour</w>
+      <w>auditd</w>
       <w>bdev</w>
       <w>bootdev</w>
       <w>brgv</w>
@@ -26,6 +27,7 @@
       <w>fssize</w>
       <w>fstype</w>
       <w>gbytes</w>
+      <w>gpasswd</w>
       <w>homehost</w>
       <w>iface</w>
       <w>initramfs</w>
