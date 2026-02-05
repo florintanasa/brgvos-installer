@@ -792,7 +792,7 @@ menu_hardening() {
   _checklist="
   apparmor AppArmor $_state_armor \
   audit Audit $_state_audit \
-  hardening Hardening $_state_hardening"
+  hardening Hardening(sysctl) $_state_hardening"
   # Create dialog
   DIALOG --no-tags --checklist "$_desc" 20 60 2 ${_checklist}
   # Verify if the user accept the dialog
@@ -974,9 +974,9 @@ menu_hardening() {
     # Open form dialog
     exec 3>&1
     # Show the build list dialog
-    _raw=$(dialog --colors --keep-tite --no-shadow --no-mouse --title "Edit Options" \
+    _raw=$(dialog --colors --keep-tite --no-shadow --no-mouse --visit-items --title "Edit Options" \
       --backtitle "${BOLD}${WHITE}BRGV-OS Linux installation -- https://github.com/florintanasa/brgvos-void (@@MKLIVE_VERSION@@)${RESET}" \
-      --buildlist "Select and edit the options you want:" 20 80 0 \
+      --buildlist "Select (using space key) the options you want. To select the window use '^', for left, or '$', for right:" 30 130 2 \
       "${_options[@]}" 3>&1 1>&2 2>&3)
     # Close form dialog
     exec 3>&-
@@ -988,7 +988,7 @@ menu_hardening() {
         # in the map – skip empty results.
         [[ -n ${_label_for[$_tag]} ]] && printf '%s\n' "${_label_for[$_tag]}"
       done
-    } > /tmp/choices.txt
+    } > /tmp/99-myconfig.conf
   fi
   # set hardening done
   HARDENING_DONE=1
