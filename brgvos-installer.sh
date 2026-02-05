@@ -766,7 +766,7 @@ show_partitions_filtered() {
 menu_hardening() {
   # Define some local variables
   local _desc _checklist _answers rv _apparmor _hardening _state_armor _state_hardening _audit _state_audit _options \
-    _tag _label _label_for _raw _selected_tags
+    _tag _label _label_for _raw _selected_tags _file _status _line
   # Loading local variable from config file
   _apparmor=$(get_option APPARMOR)
   if  [ -n "$_apparmor" ] && [ "$_apparmor" -eq 1 ]; then
@@ -3312,7 +3312,7 @@ menu() {
   "Timezone") menu_timezone && [ -n "$TIMEZONE_DONE" ] && DEFITEM="RootPassword";;
   "RootPassword") menu_rootpassword && [ -n "$ROOTPASSWORD_DONE" ] && DEFITEM="UserAccount";;
   "UserAccount") menu_useraccount && [ -n "$USERLOGIN_DONE" ] && [ -n "$USERPASSWORD_DONE" ] && DEFITEM="Hardening";;
-  "Hardening") menu_hardening && [ -n "$HARDENING_DONE" ] && DEFITEM="BootLoader";;
+  "Hardening") menu_hardening "$@" && [ -n "$HARDENING_DONE" ] && DEFITEM="BootLoader";;
   "BootLoader") menu_bootloader && [ -n "$BOOTLOADER_DONE" ] && DEFITEM="Partition";;
   "Partition") menu_partitions && [ -n "$PARTITIONS_DONE" ] && DEFITEM="LVM&LUKS";;
   "LVM&LUKS") menu_lvm_luks && [ -n "$LVMLUKS_DONE" ] && DEFITEM="Raid";;
@@ -3353,7 +3353,7 @@ ${BOLD}${YELLOW}https://github.com/florintanasa/brgvos-void${RESET}\n
 ${BOLD}${YELLOW}https://www.voidlinux.org${RESET}\n" 20 80
 
 while true; do
-  menu
+  menu "$@" # Argument can be a file for menu_hardening function, but work also without argument
 done
 
 exit 0
