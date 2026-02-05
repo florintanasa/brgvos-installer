@@ -1025,6 +1025,7 @@ set_hardening() {
       chroot $TARGETDIR cp /tmp/99-myconfig.conf /etc/sysctl.d/
     } >>$LOG 2>&1
 }
+
 # Function for menu LVM&LUKS
 menu_lvm_luks() {
   # Define some local variables
