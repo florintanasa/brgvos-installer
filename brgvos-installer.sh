@@ -2071,7 +2071,7 @@ set_bootloader() {
   chroot $TARGETDIR sed -i '$aGRUB_DISABLE_OS_PROBER=false' /etc/default/grub >>$LOG 2>&1
   # Check if the user set to use AppArmor
   if [ "$_apparmor" -eq 1 ]; then # If yes, enable AppArmor in kernel parameters to be loaded in Enforce mode
-    echo "Security AppArmor was set to be loaded by kernel in Enforce mode" >>$LOG
+    echo "Security AppArmor was set to be loaded by kernel in Enforce mode..." >>$LOG
     {
       chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\([^"]*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 apparmor=1 security=apparmor"/' /etc/default/grub
       chroot $TARGETDIR sed -i 's/APPARMOR=complain/APPARMOR=enforce/g' /etc/default/apparmor
