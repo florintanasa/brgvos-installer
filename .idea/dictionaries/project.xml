@@ -41,6 +41,7 @@
       <w>loglevel</w>
       <w>lpadmin</w>
       <w>lvbrgvos</w>
+      <w>lvextra</w>
       <w>lvhome</w>
       <w>lvmluks</w>
       <w>lvname</w>
@@ -59,6 +60,7 @@
       <w>mnts</w>
       <w>mountpoint</w>
       <w>msgboxsize</w>
+      <w>myconfig</w>
       <w>ncheck</w>
       <w>nmcli</w>
       <w>nmtui</w>
@@ -84,6 +86,7 @@
       <w>secondpass</w>
       <w>sectorsize</w>
       <w>skel</w>
+      <w>slvextra</w>
       <w>slvhome</w>
       <w>slvrootfs</w>
       <w>slvswap</w>
