@@ -21,6 +21,7 @@
       <w>dhcpcd</w>
       <w>dialogrc</w>
       <w>espeakup</w>
+      <w>extrapkg</w>
       <w>fdisk</w>
       <w>firstpass</w>
       <w>fspassno</w>
@@ -28,6 +29,7 @@
       <w>fstype</w>
       <w>gbytes</w>
       <w>gpasswd</w>
+      <w>groupadd</w>
       <w>homehost</w>
       <w>iface</w>
       <w>initramfs</w>
