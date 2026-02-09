@@ -1119,11 +1119,13 @@ set_hardening() {
   # Load variable with value saved in config file
   _hardening=$(get_option HARDENING)
   # Copy config file from /tmp to $TARGET/tmp, then create directory sysctl.d in $TARGET and copy here the config file
+  if [ -f /tmp/99-myconfig.conf ]; then
     {
-      cp /tmp/99-myconfig.conf $TARGETDIR/tmp
-      chroot $TARGETDIR mkdir -p /etc/sysctl.d
-      chroot $TARGETDIR cp /tmp/99-myconfig.conf /etc/sysctl.d/
+      cp /tmp/99-myconfig.conf "$TARGETDIR"/tmp
+      chroot "$TARGETDIR" mkdir -p /etc/sysctl.d
+      chroot "$TARGETDIR" cp /tmp/99-myconfig.conf /etc/sysctl.d/
     } >>$LOG 2>&1
+  fi
 }
 
 # Function for menu LVM&LUKS
