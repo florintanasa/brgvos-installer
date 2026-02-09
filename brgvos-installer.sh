@@ -1043,6 +1043,7 @@ and performance options." 30 80
     # Empty variable used before
     _label=
     _tag=
+    _raw=
     # Create a tag → label map (associative array)
     declare -A label_for
     for ((i=0; i<${#_options[@]}; i+=3)); do
@@ -1053,7 +1054,7 @@ and performance options." 30 80
     # Open form dialog
     exec 3>&1
     # Show the build list dialog
-    _raw=$(dialog --colors --keep-tite --no-shadow --no-mouse --visit-items --title "Edit Options" \
+    _raw=$(dialog --colors --keep-tite --no-shadow --no-mouse --visit-items --title "Hardening(sysctl) Options" \
       --backtitle "${BOLD}${WHITE}BRGV-OS Linux installation -- https://github.com/florintanasa/brgvos-void (@@MKLIVE_VERSION@@)${RESET}" \
       --buildlist "Select (using space key) the options you want. To select the window use '^', for left, or '$', for right:" 30 130 2 \
       "${_options[@]}" 3>&1 1>&2 2>&3)
