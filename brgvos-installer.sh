@@ -846,13 +846,13 @@ It controls networking, security, and performance options." 30 80
         14 "# Network activity auditing" off
         15 "# This tracks outgoing and incoming network connections" off
         16 "-a always,exit -F arch=b64 -S connect -S accept -k network_activity" off
-        17 "-a always,exit -F arch=b32 -S connect -S accept -k network_activity" off
+        17 "#-a always,exit -F arch=b32 -S connect -S accept -k network_activity" off
         18 "# Application usage monitoring" off
         19 "# This watches for sudo executions" off
         20 "-w /usr/bin/sudo -p x -k sudo_usage" off
         21 "# Application usage by specific user" off
-        22 "-a always,exit -F arch=b64 -S execve -F uid=1000 -k programs" off
-        23 " # Monitoring access to personal data" off
+        22 "-a always,exit -S execve -F uid=1000 -k programs" off
+        23 "# Monitoring access to personal data" off
         24 "# This logs access to the home directory, where personal files are stored" off
         25 "-w /home/ -p wa -k personal_data_access" off
         26 "# Monitoring external device usage" off
