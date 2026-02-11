@@ -789,7 +789,7 @@ menu_hardening() {
   # Messagebox with some info
   DIALOG --title "Hardening" --msgbox "\n
   ${BOLD}${RED}WARNING: If you're beginner, try these options on a test machine first!${RESET}\n\n
-  In the next window you can choose to configure to load at boot:\n\n
+  In the next window you can choose which configurations to load at boot:\n\n
 ${BOLD}${YELLOW}AppArmor${RESET} – a Linux security module that confines programs to a set of defined permissions (profiles). \
 It enforces access control by restricting file, network, and capability usage, helping prevent exploits even if an \
 application is compromised.\n\n
