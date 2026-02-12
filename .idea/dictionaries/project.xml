@@ -30,6 +30,7 @@
       <w>gbytes</w>
       <w>gpasswd</w>
       <w>groupadd</w>
+      <w>groupdel</w>
       <w>homehost</w>
       <w>iface</w>
       <w>initramfs</w>
