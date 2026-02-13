@@ -1112,9 +1112,13 @@ set_audit() {
     chroot "$TARGETDIR" ln -s /etc/sv/auditd /etc/runit/runsvdir/default/
     # Copy rules file from /tmp to $TARGET/tmp, then copy rules file to /etc/audit/rules.d
     if [ -f /tmp/99-myconfig.rules ]; then
+      echo "Copy rules file from /tmp to $TARGET/tmp, then copy rules file to /etc/audit/rules.d"
       cp /tmp/99-myconfig.rules "$TARGETDIR"/tmp
       chroot "$TARGETDIR" cp /tmp/99-myconfig.rules /etc/audit/rules.d/
     fi
+    echo "Added -i (Ignore errors) in /etc/audit/rules.d/10-base-config.rules"
+    chroot "$TARGETDIR" sed -i '$a# Ignore errors' /etc/audit/rules.d/10-base-config.rules
+    chroot "$TARGETDIR" sed -i '$a-i' /etc/audit/rules.d/10-base-config.rules
   } >>$LOG 2>&1
 }
 
