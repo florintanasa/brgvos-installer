@@ -3,6 +3,8 @@
     <words>
       <w>addr</w>
       <w>agetty</w>
+      <w>apparmour</w>
+      <w>auditd</w>
       <w>bdev</w>
       <w>bootdev</w>
       <w>brgv</w>
@@ -19,12 +21,16 @@
       <w>dhcpcd</w>
       <w>dialogrc</w>
       <w>espeakup</w>
+      <w>extrapkg</w>
       <w>fdisk</w>
       <w>firstpass</w>
       <w>fspassno</w>
       <w>fssize</w>
       <w>fstype</w>
       <w>gbytes</w>
+      <w>gpasswd</w>
+      <w>groupadd</w>
+      <w>groupdel</w>
       <w>homehost</w>
       <w>iface</w>
       <w>initramfs</w>
@@ -36,6 +42,7 @@
       <w>loglevel</w>
       <w>lpadmin</w>
       <w>lvbrgvos</w>
+      <w>lvextra</w>
       <w>lvhome</w>
       <w>lvmluks</w>
       <w>lvname</w>
@@ -54,6 +61,7 @@
       <w>mnts</w>
       <w>mountpoint</w>
       <w>msgboxsize</w>
+      <w>myconfig</w>
       <w>ncheck</w>
       <w>nmcli</w>
       <w>nmtui</w>
@@ -79,6 +87,7 @@
       <w>secondpass</w>
       <w>sectorsize</w>
       <w>skel</w>
+      <w>slvextra</w>
       <w>slvhome</w>
       <w>slvrootfs</w>
       <w>slvswap</w>

@@ -2,7 +2,7 @@
 #-
 # Copyright (c) 2012-2015 Juan Romero Pardines <xtraeme@gmail.com>.
 #               2012 Dave Elusive <davehome@redthumb.info.tm>.
-#               2025 Florin Tanasă <florin.tanasa@gmail.com>
+#               2025-2026 Florin Tanasă <florin.tanasa@gmail.com>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -66,7 +66,7 @@ dialog_color = (CYAN,BLACK,ON)
 title_color = (WHITE,BLACK,ON)
 
 # Dialog box border color
-border_color = (CYAN,BLACK,ON)
+border_color = screen_color
 
 # Active button color
 button_active_color = (BLACK,CYAN,OFF)
@@ -191,6 +191,7 @@ USERPASSWORD_DONE=
 USERNAME_DONE=
 USERGROUPS_DONE=
 USERACCOUNT_DONE=
+HARDENING_DONE=
 BOOTLOADER_DONE=
 PARTITIONS_DONE=
 RAID_DONE=
@@ -198,6 +199,8 @@ LVMLUKS_DONE=
 NETWORK_DONE=
 FILESYSTEMS_DONE=
 MIRROR_DONE=
+AUDIT_FILE=""
+SYSCTL_FILE=""
 
 # set the date and time
 date_time=$(date +'%d%m%Y_%H%M%S')
@@ -273,6 +276,38 @@ REVERSE="\Zr"
 UNDERLINE="\Zu"
 RESET="\Zn"
 
+# Function to display help for usage
+display_help() {
+  echo -e "${bold}${cyan}Usage:${reset}"
+  echo -e " brgvos-installer [ARGUMENT]"
+  echo -e "\nDescription:"
+  echo -e " Installer for BRGV-OS"
+  echo -e "\nOptions:"
+  echo -e "  ARGUMENT: -a /file/path/yourfileconfig.rules # to load you prepared file with config audit rules\n
+           -s /file/path/yourfileconfig.conf # to load you prepared file with config sysctl config\n
+           Check examples files from /usr/local/share for the form accepted"
+  echo -e "\nEXAMPLES:"
+  echo -e " brgvos-installer # without any argument is used defaults config rules for audit and config sysyctl"
+  echo -e " brgvos-installer -a /usr/local/share/rules.d/99-myconfig-installer.rules"
+  echo -e " brgvos-installer -s /usr/local/share/sysctl.d/99-desktop-installer.conf"
+  echo -e " brgvos-installer -a /usr/local/share/rules.d/99-myconfig-installer.rules -s /usr/local/share/sysctl.d/99-desktop-installer.conf"
+  exit 0
+}
+
+# Check for help flag
+if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+  display_help
+fi
+
+# Parse args: -a audit-file, -s sysctl-file
+while getopts "a:s:" opt; do
+  case "$opt" in
+  a) AUDIT_FILE=$OPTARG ;;
+  s) SYSCTL_FILE=$OPTARG ;;
+  *) ;;
+  esac
+done
+
 # Properties shared per widget.
 MENULABEL="${BOLD}Use UP and DOWN keys to navigate \
 menus. Use TAB to switch between buttons and ENTER to select.${RESET}"
@@ -319,6 +354,9 @@ DIE() {
   set_option RAID "" # clear RAID value
   set_option RAIDPV "" # clear RAIDPV value
   set_option INDEXRAID "" # clear INDEXRAID value
+  set_option APPARMOR "" # clear APPARMOR value
+  set_option HARDENING "" # clear HARDENING value
+  set_option AUDIT "" # clear AUDIT value
   rm -f "$ANSWER" "$TARGET_FSTAB" "$TARGET_SERVICES"
   # re-enable printk
   if [ -w /proc/sys/kernel/printk ]; then
@@ -756,6 +794,538 @@ show_partitions_filtered() {
 ')
   # Print the filtered list
   echo "$filtered_list"
+}
+
+# Function for menu Hardening
+menu_hardening() {
+  # Define some local variables
+  local _desc _checklist _answers rv _apparmor _hardening _state_armor _state_hardening _audit _state_audit _options \
+    _tag _label _label_for _raw _selected_tags _file_audit _file_sysctl _status _line
+  # Loading local variable from config file
+  _apparmor=$(get_option APPARMOR)
+  if  [ -n "$_apparmor" ] && [ "$_apparmor" -eq 1 ]; then
+    _state_armor="on"
+  else
+    _state_armor="off"
+  fi
+  _hardening=$(get_option HARDENING)
+  if [ -n "$_hardening" ] && [ "$_hardening" -eq 1 ]; then
+    _state_hardening="on"
+  else
+    _state_hardening="off"
+  fi
+  _audit=$(get_option AUDIT)
+  if [ -n "$_audit" ] && [ "$_audit" -eq 1 ]; then
+    _state_audit="on"
+  else
+    _state_audit="off"
+  fi
+  # Messagebox with some info
+  DIALOG --title "Hardening" --msgbox "\n
+  ${BOLD}${RED}WARNING: If you're beginner, try these options on a test machine first!${RESET}\n\n
+  In the next window you can choose which configurations to load at boot:\n\n
+${BOLD}${YELLOW}AppArmor${RESET} – a Linux security module that confines programs to a set of defined permissions (profiles). \
+It enforces access control by restricting file, network, and capability usage, helping prevent exploits even if an \
+application is compromised.\n\n
+${BOLD}${YELLOW}Audit${RESET} – the Linux auditing subsystem (auditd) that records security‑relevant events such as \
+system calls, file accesses, and user actions. Administrators configure rules to log specific activities, then review \
+the logs for compliance or incident investigation.\n
+User is necessary to be part from ${BLUE}'audit'${RESET} group for reading the log.\n
+You have some examples to choose and finally these setting can be edited, before to install, on ${BLUE}'/tmp/99-myconfig.rules'${RESET}.\n
+Settings are stored on ${BLUE}'/etc/audit/rules.d/99-myconfig.conf'${RESET}, after install.\n\n
+${BOLD}${YELLOW}Hardening(sysctl)${RESET} – a kernel interface for viewing and modifying runtime parameters.\n
+You have some examples for a Desktop or Server machine, and finally these setting can be edited, before to install, on \
+${BLUE}'/tmp/99-myconfig.conf'${RESET}.\n
+Settings are stored on ${BLUE}'/etc/sysctl.d/99-myconfig.conf'${RESET}, after install.\n
+It controls networking, security, and performance options." 30 80
+  # Description for checklist box
+  _desc="Select if you wish to setting AppArmor and hardening"
+  # Description for checklist box
+  _checklist="
+  apparmor AppArmor $_state_armor \
+  audit Audit $_state_audit \
+  hardening Hardening(sysctl) $_state_hardening"
+  # Create dialog
+  DIALOG --no-tags --checklist "$_desc" 20 60 2 ${_checklist}
+  # Verify if the user accept the dialog
+  rv=$?
+  if [ "$rv" -eq 0 ]; then
+    _answers=$(cat "$ANSWER")
+    if echo "$_answers" | grep -q "apparmor"; then
+      set_option APPARMOR "1"
+    else
+      set_option APPARMOR "0"
+    fi
+    if echo "$_answers" | grep -q "audit"; then\
+      set_option AUDIT "1"
+    else
+      set_option AUDIT "0"
+    fi
+    _audit=$(get_option AUDIT)
+    if [ "$_audit" -eq 1 ]; then
+      # Build the list with options for hardening
+    #_file="${1:-}" # Default to empty, file can be passed as an argument
+      _file_audit=$AUDIT_FILE
+      if [ -n "$_file_audit" ] && [ -f "$_file_audit" ]; then
+        # Empty the array
+        _options=()
+        # Read every line from file
+        while IFS= read -r _line; do
+          # Ignore empty lines
+          [[ -z "$_line" ]] && continue
+          # Line have the form: <tag> "<label>" <status>
+          # Use eval to evaluated correctly ""
+          eval "set -- $_line"
+          _tag=$1
+          _label=$2
+          _status=$3
+          # Add elements in _options array
+          _options+=( "$_tag" "$_label" "$_status" )
+        done < "$_file_audit" # Open file send as argument
+      else
+      _options=(
+        1 "# Audit for BRGV-OS ###############################################################" off
+        2 "# Self Auditing ###################################################################" off
+        3 "## Audit the audit logs" off
+        4 "### Successful and unsuccessful attempts to read information from the audit records" off
+        5 "-a always,exit -F arch=b64 -F dir=/var/log/audit/ -F perm=wra -F key=auditlog" off
+        6 "## Auditd configuration" off
+        7 "### Modifications to audit configuration that occur while the audit collection functions are operating" off
+        8 "-a always,exit -F arch=b64 -F dir=/etc/audit/ -F perm=wa -F key=auditconfig" off
+        9 "-a always,exit -F arch=b64 -F path=/etc/libaudit.conf -F perm=wa -F key=auditconfig" off
+        10 "## Monitor for use of audit management tools" off
+        11 "-a always,exit -F arch=b64 -F path=/usr/sbin/auditctl -F perm=x -F key=audittools" off
+        12 "-a always,exit -F arch=b64 -F path=/usr/sbin/auditd -F perm=x -F key=audittools" off
+        13 "-a always,exit -F arch=b64 -F path=/usr/sbin/augenrules -F perm=x -F key=audittools" off
+        14 "## Access to all audit trails" off
+        15 "-a always,exit -F arch=b64 -F path=/usr/sbin/ausearch -F perm=x -F key=audittools" off
+        16 "-a always,exit -F arch=b64 -F path=/usr/sbin/aureport -F perm=x -F key=audittools" off
+        17 "-a always,exit -F arch=b64 -F path=/usr/sbin/aulast -F perm=x -F key=audittools" off
+        18 "-a always,exit -F arch=b64 -F path=/usr/sbin/aulastlog -F perm=x -F key=audittools" off
+        19 "# Filters ######################################################################" off
+        20 "### We put these early because audit is a first match wins system" off
+        21 "## Ignore current working directory records" off
+        22 "## -a always,exclude -F arch=b64 -F msgtype=CWD" off
+        23 "## Cron jobs fill the logs with stuff we normally do not want" off
+        24 "-a never,user -F arch=b64 -F subj_type=crond_t" off
+        25 "-a never,exit -F arch=b64 -F subj_type=crond_t" off
+        26 "## This prevents chrony from overwhelming the logs" off
+        27 "-a never,exit -F arch=b64 -S adjtimex -F auid=-1 -F uid=chrony -F subj_type=chronyd_t" off
+        28 "## This is not very interesting and wastes a lot of space if the server is public facing" off
+        29 "-a always,exclude -F arch=b64 -F msgtype=CRYPTO_KEY_USER" off
+        30 "## High Volume Event Filter (especially on Linux Workstations)" off
+        31 "-a never,exit -F arch=b32 -F dir=/dev/shm/ -F key=sharedmemaccess" off
+        32 "-a never,exit -F arch=b64 -F dir=/dev/shm/ -F key=sharedmemaccess" off
+        33 "-a never,exit -F arch=b32 -F dir=/var/lock/lvm/ -F key=locklvm" off
+        34 "-a never,exit -F arch=b64 -F dir=/var/lock/lvm/ -F key=locklvm" off
+        35 "# Rules #######################################################################" off
+        36 "## Kernel parameters" off
+        37 "-a always,exit -F arch=b64 -F path=/etc/sysctl.conf -F perm=wa -F key=sysctl" off
+        38 "-a always,exit -F arch=b64 -F path=/etc/sysctl.d -F perm=wa -F key=sysctl" off
+        39 "## Kernel module loading and unloading" off
+        40 "-a always,exit -F arch=b64 -F perm=x -F auid!=-1 -F path=/usr/sbin/insmod -F key=modules" off
+        41 "-a always,exit -F arch=b64 -F perm=x -F auid!=-1 -F path=/usr/sbin/modprobe -F key=modules" off
+        42 "-a always,exit -F arch=b64 -F perm=x -F auid!=-1 -F path=/usr/sbin/rmmod -F key=modules" off
+        43 "-a always,exit -F arch=b64 -S finit_module -S init_module -S delete_module -F auid!=-1 -F key=modules" off
+        44 "## Modprobe configuration" off
+        45 "-a always,exit -F arch=b64 -F path=/etc/modprobe.d -F perm=wa -F key=modprobe" off
+        46 "## Special files" off
+        47 "-a always,exit -F arch=b64 -S mknod -S mknodat -F key=specialfiles" off
+        48 "## Mount operations (only attributable)" off
+        49 "-a always,exit -F arch=b64 -S mount -S umount2 -F auid!=-1 -F key=mount" off
+        50 "## Change swap (only attributable)" off
+        51 "-a always,exit -F arch=b64 -S swapon -S swapoff -F auid!=-1 -F key=swap" off
+        52 "## Time" off
+        53 "### Local time zone" off
+        54 "-a always,exit -F arch=b64 -F path=/etc/localtime -F perm=wa -F key=localtime" off
+        55 "## Cron configuration & scheduled jobs" off
+        56 "-a always,exit -F arch=b64 -F path=/etc/cron.deny -F perm=wa -F key=cron" off
+        57 "-a always,exit -F arch=b64 -F dir=/etc/cron.d/ -F perm=wa -F key=cron" off
+        58 "-a always,exit -F arch=b64 -F dir=/etc/cron.daily/ -F perm=wa -F key=cron" off
+        59 "-a always,exit -F arch=b64 -F dir=/etc/cron.hourly/ -F perm=wa -F key=cron" off
+        60 "-a always,exit -F arch=b64 -F dir=/etc/cron.monthly/ -F perm=wa -F key=cron" off
+        61 "-a always,exit -F arch=b64 -F dir=/etc/cron.weekly/ -F perm=wa -F key=cron" off
+        62 "-a always,exit -F arch=b64 -F dir=/var/spool/cron/ -F perm=wa -F key=cron" off
+        63 "## User, group, password databases" off
+        64 "-a always,exit -F arch=b64 -F path=/etc/group -F perm=wa -F key=etcgroup" off
+        65 "-a always,exit -F arch=b64 -F path=/etc/passwd -F perm=wa -F key=etcpasswd" off
+        66 "-a always,exit -F arch=b64 -F path=/etc/gshadow -F perm=wa -F key=etcgroup" off
+        67 "-a always,exit -F arch=b64 -F path=/etc/shadow -F perm=wa -F key=etcpasswd" off
+        68 "## Sudoers file changes" off
+        69 "-a always,exit -F arch=b64 -F path=/etc/sudoers -F perm=wa -F key=actions" off
+        70 "-a always,exit -F arch=b64 -F dir=/etc/sudoers.d/ -F perm=wa -F key=actions" off
+        71 "## Passwd" off
+        72 "-a always,exit -F arch=b64 -F path=/usr/bin/passwd -F perm=x -F key=passwd_modification" off
+        73 "## Tools to change group identifiers" off
+        74 "-a always,exit -F arch=b64 -F path=/usr/sbin/groupadd -F perm=x -F key=group_modification" off
+        75 "-a always,exit -F arch=b64 -F path=/usr/sbin/groupmod -F perm=x -F key=group_modification" off
+        76 "-a always,exit -F arch=b64 -F path=/usr/sbin/useradd -F perm=x -F key=user_modification" off
+        77 "-a always,exit -F arch=b64 -F path=/usr/sbin/userdel -F perm=x -F key=user_modification" off
+        78 "-a always,exit -F arch=b64 -F path=/usr/sbin/usermod -F perm=x -F key=user_modification" off
+        79 "## Login configuration and information" off
+        80 "-a always,exit -F arch=b64 -F path=/etc/login.defs -F perm=wa -F key=login" off
+        81 "-a always,exit -F arch=b64 -F path=/etc/securetty -F perm=wa -F key=login" off
+        82 "-a always,exit -F arch=b64 -F path=/var/log/lastlog -F perm=wa -F key=login" off
+        83 "## Network Environment" off
+        84 "### Changes to hostname" off
+        85 "-a always,exit -F arch=b64 -S sethostname -S setdomainname -F key=network_modifications" off
+        86 "### Detect Remote Shell Use" off
+        87 "-a always,exit -F arch=b64 -F exe=/usr/bin/bash -F success=1 -S connect -F key=remote_shell" off
+        88 "### Successful IPv4 Connections" off
+        89 "-a always,exit -F arch=b64 -S connect -F a2=16 -F success=1 -F key=network_connect_4" off
+        90 "### Successful IPv6 Connections" off
+        91 "-a always,exit -F arch=b64 -S connect -F a2=28 -F success=1 -F key=network_connect_6" off
+        92 "### Changes to other files" off
+        93 "-a always,exit -F arch=b64 -F path=/etc/hosts -F perm=wa -F key=network_modifications" off
+        94 "-a always,exit -F arch=b64 -F dir=/etc/NetworkManager/ -F perm=wa -F key=network_modifications" off
+        95 "## Library search paths" off
+        96 "-a always,exit -F arch=b64 -F path=/etc/ld.so.conf -F perm=wa -F key=libpath" off
+        97 "-a always,exit -F arch=b64 -F path=/etc/ld.so.conf.d -F perm=wa -F key=libpath" off
+        98 "## Pam configuration" off
+        99 "-a always,exit -F arch=b64 -F dir=/etc/pam.d/ -F perm=wa -F key=pam" off
+        100 "-a always,exit -F arch=b64 -F path=/etc/security/limits.conf -F perm=wa  -F key=pam" off
+        101 "-a always,exit -F arch=b64 -F path=/etc/security/limits.d -F perm=wa  -F key=pam" off
+        102 "-a always,exit -F arch=b64 -F path=/etc/security/namespace.conf -F perm=wa -F key=pam" off
+        103 "-a always,exit -F arch=b64 -F path=/etc/security/namespace.d -F perm=wa -F key=pam" off
+        104 "-a always,exit -F arch=b64 -F path=/etc/security/namespace.init -F perm=wa -F key=pam" off
+        105 "## SSH configuration" off
+        106 "-a always,exit -F arch=b64 -F path=/etc/ssh/sshd_config -F key=sshd" off
+        107 "-a always,exit -F arch=b64 -F path=/etc/ssh/sshd_config.d -F key=sshd" off
+        108 "## AppArmor events that modify the system's Mandatory Access Controls (MAC)" off
+        109 "-a always,exit -F arch=b64 -F dir=/etc/apparmor.d/ -F perm=wa -F key=mac_policy" off
+        110 "## Critical elements access failures" off
+        111 "-a always,exit -F arch=b64 -S open -F dir=/etc -F success=0 -F key=unauthedfileaccess" off
+        112 "-a always,exit -F arch=b64 -S open -F dir=/bin -F success=0 -F key=unauthedfileaccess" off
+        113 "-a always,exit -F arch=b64 -S open -F dir=/sbin -F success=0 -F key=unauthedfileaccess" off
+        114 "-a always,exit -F arch=b64 -S open -F dir=/usr/bin -F success=0 -F key=unauthedfileaccess" off
+        115 "-a always,exit -F arch=b64 -S open -F dir=/usr/sbin -F success=0 -F key=unauthedfileaccess" off
+        116 "-a always,exit -F arch=b64 -S open -F dir=/var -F success=0 -F key=unauthedfileaccess" off
+        117 "-a always,exit -F arch=b64 -S open -F dir=/home -F success=0 -F key=unauthedfileaccess" off
+        118 "## Process ID change (switching accounts) applications" off
+        119 "-a always,exit -F arch=b64 -F path=/usr/bin/su -F perm=x -F key=priv_esc" off
+        120 "-a always,exit -F arch=b64 -F path=/usr/bin/sudo -F perm=x -F key=priv_esc" off
+        121 "## Power state" off
+        122 "-a always,exit -F arch=b64 -F path=/sbin/shutdown -F perm=x -F key=power" off
+        123 "-a always,exit -F arch=b64 -F path=/sbin/poweroff -F perm=x -F key=power" off
+        124 "-a always,exit -F arch=b64 -F path=/sbin/reboot -F perm=x -F key=power" off
+        125 "-a always,exit -F arch=b64 -F path=/sbin/halt -F perm=x -F key=power" off
+        126 "## Session initiation information" off
+        127 "-a always,exit -F arch=b64 -F path=/var/run/utmp -F perm=wa -F key=session" off
+        128 "## Discretionary Access Control (DAC) modifications" off
+        129 "-a always,exit -F arch=b64 -S chmod  -F auid>=1000 -F auid!=-1 -F key=perm_mod" off
+        130 "-a always,exit -F arch=b64 -S chown -F auid>=1000 -F auid!=-1 -F key=perm_mod" off
+        131 "-a always,exit -F arch=b64 -S fchmod -F auid>=1000 -F auid!=-1 -F key=perm_mod" off
+        132 "-a always,exit -F arch=b64 -S fchmodat -F auid>=1000 -F auid!=-1 -F key=perm_mod" off
+        133 "-a always,exit -F arch=b64 -S fchown -F auid>=1000 -F auid!=-1 -F key=perm_mod" off
+        134 "-a always,exit -F arch=b64 -S fchownat -F auid>=1000 -F auid!=-1 -F key=perm_mod" off
+        135 "-a always,exit -F arch=b64 -S fremovexattr -F auid>=1000 -F auid!=-1 -F key=perm_mod" off
+        136 "-a always,exit -F arch=b64 -S fsetxattr -F auid>=1000 -F auid!=-1 -F key=perm_mod" off
+        137 "-a always,exit -F arch=b64 -S lchown -F auid>=1000 -F auid!=-1 -F key=perm_mod" off
+        138 "-a always,exit -F arch=b64 -S lremovexattr -F auid>=1000 -F auid!=-1 -F key=perm_mod" off
+        139 "-a always,exit -F arch=b64 -S lsetxattr -F auid>=1000 -F auid!=-1 -F key=perm_mod" off
+        140 "-a always,exit -F arch=b64 -S removexattr -F auid>=1000 -F auid!=-1 -F key=perm_mod" off
+        141 "-a always,exit -F arch=b64 -S setxattr -F auid>=1000 -F auid!=-1 -F key=perm_mod" off
+        142 "# Software Management #############################################################" off
+        143 "# XBPS (Void)" off
+        144 "-a always,exit -F arch=b64 -F path=/usr/bin/xbps-install -F perm=x -F key=software_mgmt" off
+        145 "-a always,exit -F arch=b64 -F path=/usr/bin/xbps-remove -F perm=x -F key=software_mgmt" off
+        146 "-a always,exit -F arch=b64 -F dir=/var/db/xbps/ -F perm=wa -F key=software_mgmt" off
+        147 "# High Volume Events ##############################################################" off
+        148 "## Root command executions" off
+        149 "-a always,exit -F arch=b64 -F euid=0 -F auid>=1000 -F auid!=-1 -S execve -F key=rootcmd" off
+        150 "## File Deletion Events by User" off
+        151 "-a always,exit -F arch=b64 -S rmdir -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=-1 -F key=delete" off
+        152 "## File Access" off
+        153 "### Unauthorized Access (unsuccessful)" off
+        154 "-a always,exit -F arch=b64 -S creat -S open -S openat -S open_by_handle_at -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=-1 -F key=file_access" off
+        155 "-a always,exit -F arch=b64 -S creat -S open -S openat -S open_by_handle_at -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=-1 -F key=file_access" off
+        156 "### Unsuccessful Creation" off
+        157 "-a always,exit -F arch=b64 -S mkdir,creat,link,symlink,mknod,mknodat,linkat,symlinkat -F exit=-EACCES -F key=file_creation" off
+        158 "-a always,exit -F arch=b64 -S mkdir,link,symlink,mkdirat -F exit=-EPERM -F key=file_creation" off
+        159 "### Unsuccessful Modification" off
+        160 "-a always,exit -F arch=b64 -S rename -S renameat -S truncate -S chmod -S setxattr -S lsetxattr -S removexattr -S lremovexattr -F exit=-EACCES -F key=file_modification" off
+        161 "-a always,exit -F arch=b64 -S rename -S renameat -S truncate -S chmod -S setxattr -S lsetxattr -S removexattr -S lremovexattr -F exit=-EPERM -F key=file_modification" off
+        162 "## 32bit ABI Exploitation" off
+        163 "### https://github.com/linux-audit/audit-userspace/blob/c014eec64b3a16c004f4a75e5792a4ac2fcc0df2/rules/21-no32bit.rules" off
+        164 "### If you are on a 64 bit platform, everything _should_ be running" off
+        165 "### in 64 bit mode. This rule will detect any use of the 32 bit syscalls" off
+        166 "### because this might be a sign of someone exploiting a hole in the 32" off
+        167 "### bit ABI." off
+        168 "-a always,exit -F arch=b32 -S all -F key=32bit_abi" off
+      )
+      fi
+      # Empty variable used before
+      _label=
+      _tag=
+      _raw=
+      # Create a tag → label map (associative array)
+      declare -A label_for
+      for ((i=0; i<${#_options[@]}; i+=3)); do
+        _tag=${_options[i]}
+        _label=${_options[i+1]}
+        _label_for[$_tag]="$_label"
+      done
+      # Open form dialog
+      exec 3>&1
+      # Show the build list dialog
+      _raw=$(dialog --colors --keep-tite --no-shadow --no-mouse --visit-items --title "Audit Options" \
+        --backtitle "${BOLD}${WHITE}BRGV-OS Linux installation -- https://github.com/florintanasa/brgvos-void (@@MKLIVE_VERSION@@)${RESET}" \
+        --buildlist "Select (using space key) the options you want. To select the window use '^', for left, or '$', for right:" 30 130 2 \
+        "${_options[@]}" 3>&1 1>&2 2>&3)
+      # Close form dialog
+      exec 3>&-
+      # Translate the returned tags back to their labels
+      _selected_tags=($_raw)               # split on whitespace
+      {
+        for _tag in "${_selected_tags[@]}"; do
+          # If the user removed an entry, the tag may no longer exist
+          # in the map – skip empty results.
+          [[ -n ${_label_for[$_tag]} ]] && printf '%s\n' "${_label_for[$_tag]}"
+        done
+      } > /tmp/99-myconfig.rules
+    fi
+    if echo "$_answers" | grep -q "hardening"; then
+      set_option HARDENING "1"
+    else
+      set_option HARDENING "0"
+    fi
+  elif [ "$rv" -eq 1 ]; then # Verify is user not accept the dialog
+    return
+  fi
+  _hardening=$(get_option HARDENING)
+  if [ "$_hardening" -eq 1 ]; then
+    # Build the list with options for hardening
+    #_file="${1:-}" # Default to empty, file can be passed as an argument
+    _file_sysctl=$SYSCTL_FILE
+    if [ -n "$_file_sysctl" ] && [ -f "$_file_sysctl" ]; then
+      # Empty the array
+      _options=()
+      # Read every line from file
+      while IFS= read -r _line; do
+        # Ignore empty lines
+        [[ -z "$_line" ]] && continue
+        # Line have the form: <tag> "<label>" <status>
+        # Use eval to evaluated correctly ""
+        eval "set -- $_line"
+        _tag=$1
+        _label=$2
+        _status=$3
+        # Add elements in _options array
+        _options+=( "$_tag" "$_label" "$_status" )
+      done < "$_file_sysctl" # Open file send as argument
+    else
+    _options=(
+      1 "# Desktop — compatibility, privacy, security" off
+      2 "kernel.yama.ptrace_scope = 1" off
+      3 "kernel.kptr_restrict = 2" off
+      4 "kernel.dmesg_restrict = 1" off
+      5 "kernel.sysrq = 0" off
+      6 "fs.protected_symlinks = 1" off
+      7 "fs.protected_hardlinks = 1" off
+      8 "fs.protected_fifos = 2" off
+      9 "fs.protected_regular = 2" off
+      10 "# Permit user namespaces for containerized desktop apps" off
+      11 "kernel.unprivileged_userns_clone = 1" off
+      12 "# Allow unprivileged eBPF for desktop tooling" off
+      13 "kernel.unprivileged_bpf_disabled = 0" off
+      14 "net.core.bpf_jit_harden = 2" off
+      15 "# ICMP and networking — enable IPv6 and ping for usability" off
+      16 "net.ipv4.icmp_echo_ignore_all = 0" off
+      17 "net.ipv6.conf.all.disable_ipv6 = 0" off
+      18 "net.ipv6.conf.default.disable_ipv6 = 0" off
+      19 "# TCP behaviour: keep timestamps (better perf), conservative swappiness" off
+      20 "net.ipv4.tcp_timestamps = 1" off
+      21 "vm.swappiness = 10" off
+      22 "# Reasonable defaults for local workloads" off
+      23 "net.core.somaxconn = 128" off
+      24 "net.core.netdev_max_backlog = 4096" off
+      25 "# Moderate socket buffers" off
+      26 "net.core.rmem_default = 262144" off
+      27 "net.core.rmem_max = 4194304" off
+      28 "net.core.wmem_default = 262144" off
+      29 "net.core.wmem_max = 4194304" off
+      30 "net.core.optmem_max = 65536" off
+      31 "# TCP memory (min, default, max)" off
+      32 "net.ipv4.tcp_rmem = 4096 131072 2097152" off
+      33 "net.ipv4.tcp_wmem = 4096 131072 2097152" off
+      34 "# UDP minimum buffers" off
+      35 "net.ipv4.udp_rmem_min = 8192" off
+      36 "net.ipv4.udp_wmem_min = 8192" off
+      37 "# Other desktop-friendly defaults" off
+      38 "kernel.perf_event_paranoid = 2" off
+      98 "############################################################" off
+      99 "############################################################" off
+      101 "# Server — hardening + network tuning for throughput and resilience" off
+      102 "kernel.yama.ptrace_scope = 3" off
+      103 "kernel.kexec_load_disabled = 1" off
+      104 "kernel.kptr_restrict = 2" off
+      105 "kernel.dmesg_restrict = 1" off
+      106 "kernel.sysrq = 0" off
+      107 "dev.tty.ldisc_autoload = 0" off
+      108 "kernel.unprivileged_userns_clone = 0" off
+      109 "kernel.unprivileged_bpf_disabled = 1" off
+      110 "net.core.bpf_jit_harden = 2" off
+      111 "kernel.perf_event_paranoid = 3" off
+      112 "# SYN flood / TCP protections" off
+      113 "net.ipv4.tcp_syncookies = 1" off
+      114 "net.ipv4.tcp_rfc1337 = 1" off
+      115 "# ASLR / entropy for mmap" off
+      116 "vm.mmap_rnd_bits = 32" off
+      117 "vm.mmap_rnd_compat_bits = 16" off
+      118 "# Spoofing / ICMP redirects" off
+      119 "net.ipv4.conf.all.rp_filter = 1" off
+      120 "net.ipv4.conf.default.rp_filter = 1" off
+      121 "net.ipv4.conf.all.accept_redirects = 0" off
+      122 "net.ipv4.conf.default.accept_redirects = 0" off
+      123 "net.ipv4.conf.all.secure_redirects = 0" off
+      124 "net.ipv4.conf.default.secure_redirects = 0" off
+      125 "net.ipv4.conf.all.send_redirects = 0" off
+      126 "net.ipv4.conf.default.send_redirects = 0" off
+      127 "# ICMP echo: disable to reduce surface (set 1 to block)" off
+      128 "net.ipv4.icmp_echo_ignore_all = 1" off
+      129 "# Protect filesystems" off
+      130 "fs.protected_fifos = 2" off
+      131 "fs.protected_regular = 2" off
+      132 "fs.protected_symlinks = 1" off
+      133 "fs.protected_hardlinks = 1" off
+      134 "# Source route / redirects" off
+      135 "net.ipv4.conf.all.accept_source_route = 0" off
+      136 "net.ipv4.conf.default.accept_source_route = 0" off
+      137 "# TCP SACK: disable only if kernel is vulnerable; otherwise consider enabling" off
+      138 "net.ipv4.tcp_sack = 0" off
+      139 "net.ipv4.tcp_dsack = 0" off
+      140 "net.ipv4.tcp_fack = 0" off
+      141 "# IPv6: disable if not used; enable/configure if required" off
+      142 "net.ipv6.conf.all.disable_ipv6 = 1" off
+      143 "net.ipv6.conf.default.disable_ipv6 = 1" off
+      144 "net.ipv6.conf.lo.disable_ipv6 = 1" off
+      145 "net.ipv6.conf.default.router_solicitations = 0" off
+      146 "net.ipv6.conf.default.accept_ra_rtr_pref = 0" off
+      147 "net.ipv6.conf.default.accept_ra_pinfo = 0" off
+      148 "net.ipv6.conf.default.accept_ra_defrtr = 0" off
+      149 "net.ipv6.conf.all.accept_ra = 0" off
+      150 "net.ipv6.conf.default.accept_ra = 0" off
+      151 "net.ipv6.conf.default.autoconf = 0" off
+      152 "net.ipv6.conf.default.dad_transmits = 0" off
+      153 "net.ipv6.conf.default.max_addresses = 1" off
+      154 "# Privacy for IPv6 addresses (temporary addresses)" off
+      155 "net.ipv6.conf.all.use_tempaddr = 2" off
+      156 "net.ipv6.conf.default.use_tempaddr = 2" off
+      157 "# Prevent time leakage" off
+      158 "net.ipv4.tcp_timestamps = 0" off
+      159 "# Networking performance tuning" off
+      160 "net.core.netdev_max_backlog = 16384" off
+      161 "net.core.somaxconn = 8192" off
+      162 "net.core.rmem_default = 1048576" off
+      163 "net.core.rmem_max = 16777216" off
+      164 "net.core.wmem_default = 1048576" off
+      165 "net.core.wmem_max = 16777216" off
+      166 "net.core.optmem_max = 65536" off
+      167 "net.ipv4.tcp_rmem = 4096 1048576 2097152" off
+      168 "net.ipv4.tcp_wmem = 4096 65536 16777216" off
+      169 "net.ipv4.udp_rmem_min = 8192" off
+      170 "net.ipv4.udp_wmem_min = 8192" off
+      171 "net.ipv4.tcp_fastopen = 3" off
+      172 "net.ipv4.tcp_max_syn_backlog = 8192" off
+      173 "net.ipv4.tcp_max_tw_buckets = 2000000" off
+      174 "net.ipv4.tcp_tw_reuse = 1" off
+      175 "net.ipv4.tcp_fin_timeout = 10" off
+      176 "net.ipv4.tcp_slow_start_after_idle = 0" off
+      177 "net.ipv4.tcp_mtu_probing = 1" off
+      178 "# Swappiness tuned for servers - use more from 99% RAM and then from swap" off
+      179 "vm.swappiness = 1" off
+    )
+    fi
+    # Empty variable used before
+    _label=
+    _tag=
+    _raw=
+    # Create a tag → label map (associative array)
+    declare -A label_for
+    for ((i=0; i<${#_options[@]}; i+=3)); do
+      _tag=${_options[i]}
+      _label=${_options[i+1]}
+      _label_for[$_tag]="$_label"
+    done
+    # Open form dialog
+    exec 3>&1
+    # Show the build list dialog
+    _raw=$(dialog --colors --keep-tite --no-shadow --no-mouse --visit-items --title "Hardening(sysctl) Options" \
+      --backtitle "${BOLD}${WHITE}BRGV-OS Linux installation -- https://github.com/florintanasa/brgvos-void (@@MKLIVE_VERSION@@)${RESET}" \
+      --buildlist "Select (using space key) the options you want. To select the window use '^', for left, or '$', for right:" 30 130 2 \
+      "${_options[@]}" 3>&1 1>&2 2>&3)
+    # Close form dialog
+    exec 3>&-
+    # Translate the returned tags back to their labels
+   _selected_tags=($_raw)               # split on whitespace
+    {
+      for _tag in "${_selected_tags[@]}"; do
+        # If the user removed an entry, the tag may no longer exist
+        # in the map – skip empty results.
+        [[ -n ${_label_for[$_tag]} ]] && printf '%s\n' "${_label_for[$_tag]}"
+      done
+    } > /tmp/99-myconfig.conf
+  fi
+  # set hardening done
+  HARDENING_DONE=1
+}
+
+# Function for setting audit
+set_audit() {
+  # Define some local variables
+  local _user
+  # Get username
+  _user=$(get_option USERLOGIN)
+  {
+    if cat "$TARGETDIR"/etc/group | grep -q "audit"; then
+      echo "Group 'audit' exist, so is not created..."
+    else
+      echo "Create group 'audit'..."
+      # Create group audit
+      chroot "$TARGETDIR" groupadd -r audit
+    fi
+    # Add user to audit group
+    chroot "$TARGETDIR" gpasswd -a "$_user" audit
+    if cat "$TARGETDIR"/etc/audit/auditd.conf | grep -q "log_group = root"; then
+      echo "Change log_group to audit..."
+      # Change log_group to audit
+      chroot "$TARGETDIR" sed -i 's/log_group = root/log_group = audit/g' /etc/audit/auditd.conf
+    fi
+    if cat "$TARGETDIR"/usr/lib/tmpfiles.d/audit.conf | grep -q "d /var/log/audit 0700 root root - -"; then
+      echo "Change file mode and group for directory /var/log/audit..."
+      # Change file mode and group for directory /var/log/audit
+      chroot "$TARGETDIR" sed -i 's/d \/var\/log\/audit 0700 root root - -/d \/var\/log\/audit 0750 root audit - -/g'  /usr/lib/tmpfiles.d/audit.conf
+    fi
+    echo "Enable service auditctl to start at boot..."
+    chroot "$TARGETDIR" ln -s /etc/sv/auditctl /etc/runit/runsvdir/default/
+    echo "Enable service auditd to start at boot..."
+    chroot "$TARGETDIR" ln -s /etc/sv/auditd /etc/runit/runsvdir/default/
+    # Copy rules file from /tmp to $TARGET/tmp, then copy rules file to /etc/audit/rules.d
+    if [ -f /tmp/99-myconfig.rules ]; then
+      echo "Copy rules file from /tmp to $TARGET/tmp, then copy rules file to /etc/audit/rules.d"
+      cp /tmp/99-myconfig.rules "$TARGETDIR"/tmp
+      chroot "$TARGETDIR" cp /tmp/99-myconfig.rules /etc/audit/rules.d/
+    fi
+    echo "Added -i (Ignore errors) in /etc/audit/rules.d/10-base-config.rules"
+    chroot "$TARGETDIR" sed -i '$a# Ignore errors' /etc/audit/rules.d/10-base-config.rules
+    chroot "$TARGETDIR" sed -i '$a-i' /etc/audit/rules.d/10-base-config.rules
+  } >>$LOG 2>&1
+}
+
+# Function for setting hardening
+set_hardening() {
+  # Define some local variables
+  local _hardening
+  # Load variable with value saved in config file
+  _hardening=$(get_option HARDENING)
+  # Copy config file from /tmp to $TARGET/tmp, then create directory sysctl.d in $TARGET and copy here the config file
+  if [ -f /tmp/99-myconfig.conf ]; then
+    {
+      cp /tmp/99-myconfig.conf "$TARGETDIR"/tmp
+      chroot "$TARGETDIR" mkdir -p /etc/sysctl.d
+      chroot "$TARGETDIR" cp /tmp/99-myconfig.conf /etc/sysctl.d/
+    } >>$LOG 2>&1
+  fi
 }
 
 # Function for menu LVM&LUKS
@@ -1552,9 +2122,10 @@ set_rootpassword() {
 
 # Function to set user account
 menu_useraccount() {
+  # Define some local variables
   local _firstpass _secondpass _desc _again
   local _groups _status _group _checklist
-  local _preset _userlogin
+  local _preset _userlogin _audit
 
   while true; do
     _preset=$(get_option USERLOGIN)
@@ -1619,11 +2190,20 @@ menu_useraccount() {
     fi
   done
   SOURCE_DONE="$(get_option SOURCE)"
+  _audit=$(get_option AUDIT)
   # If source not set use defaults.
-  if [ "$(get_option SOURCE)" = "local" ] || [ -z "$SOURCE_DONE" ]; then
-    _groups="wheel,audio,video,floppy,lp,dialout,cdrom,optical,storage,scanner,kvm,plugdev,users,socklog,lpadmin,bluetooth,xbuilder"
-  else
-    _groups="wheel,audio,video,floppy,cdrom,optical,kvm,users,xbuilder"
+  if [ "$(get_option SOURCE)" = "local" ] || [ -z "$SOURCE_DONE" ]; then # check if user request local installation
+    if [ -n "$_audit" ] && [ "$_audit" -eq 1 ]; then # check if user request to setting audit
+      _groups="wheel,audio,video,floppy,lp,dialout,cdrom,optical,storage,scanner,kvm,plugdev,users,socklog,lpadmin,bluetooth,xbuilder,audit"
+    else
+      _groups="wheel,audio,video,floppy,lp,dialout,cdrom,optical,storage,scanner,kvm,plugdev,users,socklog,lpadmin,bluetooth,xbuilder"
+    fi
+  else # if not request local installation remain network install
+    if [ -n "$_audit" ] && [ "$_audit" -eq 1 ]; then # check if user request to setting audit for network install
+      _groups="wheel,audio,video,floppy,cdrom,optical,kvm,users,xbuilder,audit"
+    else
+      _groups="wheel,audio,video,floppy,cdrom,optical,kvm,users,xbuilder"
+    fi
   fi
   while true; do
     _desc="Select group membership for login '$(get_option USERLOGIN)':"
@@ -1660,10 +2240,15 @@ menu_useraccount() {
 # Function to set user account from loaded saved configure file
 set_useraccount() {
   [ -z "$USERACCOUNT_DONE" ] && return
-  chroot $TARGETDIR useradd -m -G "$(get_option USERGROUPS)" \
+  if [ "$(get_option SOURCE)" = "net" ] && [ "$(get_option AUDIT)" -eq 1 ]; then
+    chroot "$TARGETDIR" groupadd -r audit
+    chroot "$TARGETDIR" sed -i 's/log_group = root/log_group = audit/g' /etc/audit/auditd.conf
+    chroot "$TARGETDIR" sed -i 's/d \/var\/log\/audit 0700 root root - -/d \/var\/log\/audit 0750 root audit - -/g'  /usr/lib/tmpfiles.d/audit.conf
+  fi
+  chroot "$TARGETDIR" useradd -m -G "$(get_option USERGROUPS)" \
     -c "$(get_option USERNAME)" "$(get_option USERLOGIN)"
   echo "$(get_option USERLOGIN):$(get_option USERPASSWORD)" | \
-    chroot $TARGETDIR chpasswd -c SHA512
+    chroot "$TARGETDIR" chpasswd -c SHA512
 }
 
 # Function to choose bootloader
@@ -1696,11 +2281,14 @@ menu_bootloader() {
 # Function to set bootloader from loaded saved configure file
 set_bootloader() {
   # Declare some local variables
-  local dev _encrypt _rootfs _bool bool index _boot _rd_luks_uuid _crypts
+  local dev _encrypt _rootfs _bool bool index _boot _rd_luks_uuid _crypts _apparmor _audit _hardening
   local -a luks_devices # Declare matrices
   # Initialise variables
   dev=$(get_option BOOTLOADER)
   _crypts=$(get_option CRYPTS)
+  _apparmor=$(get_option APPARMOR)
+  _audit=$(get_option AUDIT)
+  _hardening=$(get_option HARDENING)
   grub_args=
   bool=0
   _bool=0
@@ -1786,7 +2374,7 @@ set_bootloader() {
     DIE 1
   fi
   echo "Preparing the Logo and name in the grub menu ${bold}$TARGETDIR/etc/default/grub${reset}..." >>$LOG
-  # Copy file splash.png on /boot/grub/baackground to can see by the grub when we install on encrypted rootfs
+  # Copy file splash.png on /boot/grub/background to can see by the grub when we install on encrypted rootfs
   chroot $TARGETDIR mkdir -p /boot/grub/background >> $LOG 2>&1
   chroot $TARGETDIR cp /usr/share/brgvos-artwork/splash.png /boot/grub/background/ >> $LOG 2>&1
   chroot $TARGETDIR sed -i 's+#GRUB_BACKGROUND=/usr/share/void-artwork/splash.png+GRUB_BACKGROUND=/boot/grub/background/splash.png+g' /etc/default/grub >>$LOG 2>&1
@@ -1799,6 +2387,26 @@ set_bootloader() {
     chroot $TARGETDIR sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4\"/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=4 ${RD_MD_UUID} ${_rd_luks_uuid} quiet splash\"/g" /etc/default/grub >>$LOG 2>&1
   fi
   chroot $TARGETDIR sed -i '$aGRUB_DISABLE_OS_PROBER=false' /etc/default/grub >>$LOG 2>&1
+  # Check if the user set to use AppArmor
+  if [ -n "$_apparmor" ] && [ "$_apparmor" -eq 1 ]; then # If yes, enable AppArmor in kernel parameters to be loaded in Enforce mode
+    echo "Security AppArmor was set to be loaded by kernel in Enforce mode..." >>$LOG
+    {
+      chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\([^"]*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 apparmor=1 security=apparmor"/' /etc/default/grub
+      chroot $TARGETDIR sed -i 's/APPARMOR=complain/APPARMOR=enforce/g' /etc/default/apparmor
+    } >>$LOG 2>&1
+  fi
+  # Check if the user set to use Audit
+  if [ -n "$_audit" ] && [ "$_audit" -eq 1 ]; then
+    echo "Create group audit, add the user to this group and change owner group to audit..." >>$LOG
+    set_audit
+    echo "Set audit=1 as parameters to be loaded by kernel at boot" >>$LOG
+    chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\([^"]*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 audit=1"/' /etc/default/grub >>$LOG 2>&1
+  fi
+  # Check if the user set to use Hardening(sysctl)
+  if [ -n "$_hardening" ] && [ "$_hardening" -eq 1 ]; then
+    echo "Move file 99-myconfig.conf in /etc/sysctl.d ..." >>$LOG
+    set_hardening
+  fi
   echo "Running grub-mkconfig on ${bold}$TARGETDIR${reset}..." >>"$LOG"
   chroot $TARGETDIR grub-mkconfig -o /boot/grub/grub.cfg >>$LOG 2>&1
   # Build the Grub configure file and if not have success inform the user with a message dialog and exit from installer
@@ -2807,7 +3415,16 @@ copy_rootfs() {
 
 # Function for install packages
 install_packages() {
-  local _grub= _syspkg= _extrapkg= _kernel= _dracut=
+  # Define some local variables
+  local _grub _syspkg _extrapkg _kernel _dracut _apparmor _audit
+  # Initialise variables
+  _grub=
+  _syspkg=
+  _extrapkg=
+  _kernel=
+  _dracut=
+  _apparmor=$(get_option APPARMOR)
+  _audit=$(get_option AUDIT)
 
   if [ "$(get_option BOOTLOADER)" != none ]; then
     if [ -n "$EFI_SYSTEM" ]; then
@@ -2825,6 +3442,15 @@ install_packages() {
   _extrapkg="lvm2 cryptsetup nano"
   _kernel="linux6.12"
   _dracut="dracut"
+
+  # Add the package 'apparmor' if the user select this option
+  if [ -n "$_apparmor" ] && [ "$_apparmor" -eq 1 ]; then
+    _extrapkg+=" apparmor"
+  fi
+  # Add the package 'audit' if the user select this option
+  if [ -n "$_audit" ] && [ "$_audit" -eq 1 ]; then
+    _extrapkg+=" audit"
+  fi
 
   mkdir -p $TARGETDIR/var/db/xbps/keys $TARGETDIR/usr/share
   cp -a /usr/share/xbps.d $TARGETDIR/usr/share/
@@ -2897,6 +3523,11 @@ disable_service() {
 
 # Function for menu install
 menu_install() {
+  # Define some local variables
+  local _apparmor _audit
+  # Load variables
+  _apparmor=$(get_option APPARMOR)
+  _audit=$(get_option AUDIT)
   ROOTPASSWORD_DONE="$(get_option ROOTPASSWORD)"
   BOOTLOADER_DONE="$(get_option BOOTLOADER)"
 
@@ -2969,7 +3600,17 @@ ${BOLD}Do you want to continue?${RESET}" 20 80 || return
     if ! [ -e "/var/service/espeakup" ]; then
       TO_REMOVE+=" espeakup"
     fi
-    # For Gnome have dependencie Orca and this have dependencie brltty
+    # Remove apparmour package if not was selected by the user in Hardening menu
+    if [ -z "$_audit" ] || [ ! "$_apparmor" -eq 1 ]; then
+      TO_REMOVE+=" apparmor"
+      chroot $TARGETDIR rm -r -f /etc/apparmor.d/ >>$LOG 2>&1
+    fi
+    # Remove audit package and group if not was selected by user in Hardening menu
+    if [ -z "$_audit" ] || [ ! "$_audit" -eq 1 ]; then
+      TO_REMOVE+=" audit"
+      chroot $TARGETDIR groupdel audit >>$LOG 2>&1
+    fi
+    # For Gnome have dependencies Orca and this have dependencies brltty
     #if ! [ -e "/var/service/brltty" ]; then
     #    TO_REMOVE+=" python3-brlapi brltty"
     #fi
@@ -2980,6 +3621,14 @@ ${BOLD}Do you want to continue?${RESET}" 20 80 || return
     for pkg in $TO_REMOVE; do
       xbps-remove -r $TARGETDIR -Ry "$pkg" >>$LOG 2>&1
     done
+    # Remove /etc/apparmour.d directory if not was selected by the user in Hardening menu
+    if [ -z "$_audit" ] || [ ! "$_apparmor" -eq 1 ]; then
+      chroot $TARGETDIR rm -r -f /etc/apparmor.d/ >>$LOG 2>&1
+    fi
+    # Remove /etc/audit directory if not was selected by user in Hardening menu
+    if [ -z "$_audit" ] || [ ! "$_audit" -eq 1 ]; then
+      chroot $TARGETDIR rm -r -f /etc/audit >>$LOG 2>&1
+    fi
     rmdir $TARGETDIR/mnt/target
   else
     # mount required fs
@@ -3127,6 +3776,7 @@ menu() {
       "Hostname" "Set system hostname" \
       "Timezone" "Set system time zone" \
       "RootPassword" "Set system root password" \
+      "Hardening" "Hardening settings" \
       "UserAccount" "Set primary user name and password" \
       "BootLoader" "Set disk to install bootloader" \
       "Partition" "Partition disk(s)" \
@@ -3149,6 +3799,7 @@ menu() {
       "Locale" "Set system locale" \
       "Timezone" "Set system time zone" \
       "RootPassword" "Set system root password" \
+      "Hardening" "Hardening settings" \
       "UserAccount" "Set primary user name and password" \
       "BootLoader" "Set disk to install bootloader" \
       "Partition" "Partition disk(s)" \
@@ -3177,9 +3828,9 @@ menu() {
   "Hostname") menu_hostname && [ -n "$HOSTNAME_DONE" ] && DEFITEM="$AFTER_HOSTNAME";;
   "Locale") menu_locale && [ -n "$LOCALE_DONE" ] && DEFITEM="Timezone";;
   "Timezone") menu_timezone && [ -n "$TIMEZONE_DONE" ] && DEFITEM="RootPassword";;
-  "RootPassword") menu_rootpassword && [ -n "$ROOTPASSWORD_DONE" ] && DEFITEM="UserAccount";;
-  "UserAccount") menu_useraccount && [ -n "$USERLOGIN_DONE" ] && [ -n "$USERPASSWORD_DONE" ] \
-    && DEFITEM="BootLoader";;
+  "RootPassword") menu_rootpassword && [ -n "$ROOTPASSWORD_DONE" ] && DEFITEM="Hardening";;
+  "Hardening") menu_hardening "$@" && [ -n "$HARDENING_DONE" ] && DEFITEM="UserAccount";;
+  "UserAccount") menu_useraccount && [ -n "$USERLOGIN_DONE" ] && [ -n "$USERPASSWORD_DONE" ] && DEFITEM="BootLoader";;
   "BootLoader") menu_bootloader && [ -n "$BOOTLOADER_DONE" ] && DEFITEM="Partition";;
   "Partition") menu_partitions && [ -n "$PARTITIONS_DONE" ] && DEFITEM="LVM&LUKS";;
   "LVM&LUKS") menu_lvm_luks && [ -n "$LVMLUKS_DONE" ] && DEFITEM="Raid";;
@@ -3220,7 +3871,7 @@ ${BOLD}${YELLOW}https://github.com/florintanasa/brgvos-void${RESET}\n
 ${BOLD}${YELLOW}https://www.voidlinux.org${RESET}\n" 20 80
 
 while true; do
-  menu
+  menu "$@" # Argument can be a file for menu_hardening function, but work also without argument
 done
 
 exit 0
