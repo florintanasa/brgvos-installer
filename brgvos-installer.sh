@@ -846,14 +846,15 @@ ${BLUE}'/tmp/99-myconfig.conf'${RESET}.\n
 Settings are stored on ${BLUE}'/etc/sysctl.d/99-myconfig.conf'${RESET}, after install.\n
 It controls networking, security, and performance options." 30 80
   # Description for checklist box
-  _desc="Select if you wish to setting AppArmor and hardening"
+  _desc="Select if you wish to setting AppArmor, firewall and hardening"
   # Description for checklist box
-  _checklist="
-  apparmor AppArmor $_state_armor \
-  audit Audit $_state_audit \
-  hardening Hardening(sysctl) $_state_hardening"
+  _checklist=(
+  "apparmor" "AppArmor" "$_state_armor" \
+  "audit" "Audit" "$_state_audit" \
+  "firewall" "Firewall Manager(vuurmuur)" "$_state_firewall" \
+  "hardening" "Hardening(sysctl)" "$_state_hardening")
   # Create dialog
-  DIALOG --no-tags --checklist "$_desc" 20 60 2 ${_checklist}
+  DIALOG --no-tags --checklist "$_desc" 20 60 4 "${_checklist[@]}"
   # Verify if the user accept the dialog
   rv=$?
   if [ "$rv" -eq 0 ]; then
@@ -862,6 +863,16 @@ It controls networking, security, and performance options." 30 80
       set_option APPARMOR "1"
     else
       set_option APPARMOR "0"
+    fi
+    if echo "$_answers" | grep -q "firewall"; then\
+      set_option FIREWALL "1"
+    else
+      set_option FIREWALL "0"
+    fi
+    _firewall=$(get_option FIREWALL)
+    if [ "$_firewall" -eq 1 ]; then
+      vuurmuur_conf -W 2>>"$LOG"
+      clear
     fi
     if echo "$_answers" | grep -q "audit"; then\
       set_option AUDIT "1"
