@@ -1288,6 +1288,14 @@ It controls networking, security, and performance options." 30 80
   HARDENING_DONE=1
 }
 
+# Function to setting Firewall Manager (vuurmuur
+set_firewall() {
+  echo "Enable service 'vuurmuur' to start at boot..."  >>"$LOG"
+  chroot "$TARGETDIR" ln -s /etc/sv/vuurmuur /etc/runit/runsvdir/default/
+  echo "Enable service 'vuurmuur-log' to start at boot..." >>"$LOG"
+  chroot "$TARGETDIR" ln -s /etc/sv/vuurmuur-log /etc/runit/runsvdir/default/
+}
+
 # Function for setting audit
 set_audit() {
   # Define some local variables
@@ -2299,12 +2307,13 @@ menu_bootloader() {
 # Function to set bootloader from loaded saved configure file
 set_bootloader() {
   # Declare some local variables
-  local dev _encrypt _rootfs _bool bool index _boot _rd_luks_uuid _crypts _apparmor _audit _hardening
+  local dev _encrypt _rootfs _bool bool index _boot _rd_luks_uuid _crypts _apparmor _audit _hardening _firewall
   local -a luks_devices # Declare matrices
   # Initialise variables
   dev=$(get_option BOOTLOADER)
   _crypts=$(get_option CRYPTS)
   _apparmor=$(get_option APPARMOR)
+  _firewall=$(get_option FIREWALL)
   _audit=$(get_option AUDIT)
   _hardening=$(get_option HARDENING)
   grub_args=
@@ -2412,6 +2421,11 @@ set_bootloader() {
       chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\([^"]*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 apparmor=1 security=apparmor"/' /etc/default/grub
       chroot $TARGETDIR sed -i 's/APPARMOR=complain/APPARMOR=enforce/g' /etc/default/apparmor
     } >>$LOG 2>&1
+  fi
+  # Check if the user set to use Firewall Manager(vuurmuur)
+  if [ -n "$_firewall" ] && [ "$_firewall" -eq 1 ]; then
+    echo "Prepare Firewall Manager - vuurmuur ..." >>$LOG
+    set_firewall
   fi
   # Check if the user set to use Audit
   if [ -n "$_audit" ] && [ "$_audit" -eq 1 ]; then
@@ -3613,7 +3627,7 @@ ${BOLD}Do you want to continue?${RESET}" 20 80 || return
     chroot $TARGETDIR dracut --no-hostonly --add-drivers "ahci" --force >>$LOG 2>&1
     INFOBOX "Removing temporary packages from target ..." 4 80
     echo "Removing temporary packages from target ..." >>$LOG
-    TO_REMOVE="xmirror dialog"
+    TO_REMOVE="xmirror"
     # only remove espeakup and brltty if it wasn't enabled in the live environment
     if ! [ -e "/var/service/espeakup" ]; then
       TO_REMOVE+=" espeakup"
