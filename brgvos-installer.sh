@@ -357,6 +357,7 @@ DIE() {
   set_option APPARMOR "" # clear APPARMOR value
   set_option HARDENING "" # clear HARDENING value
   set_option AUDIT "" # clear AUDIT value
+  set_option FIREWALL "" # clear FIREWALL value
   rm -f "$ANSWER" "$TARGET_FSTAB" "$TARGET_SERVICES"
   # re-enable printk
   if [ -w /proc/sys/kernel/printk ]; then
@@ -800,7 +801,7 @@ show_partitions_filtered() {
 menu_hardening() {
   # Define some local variables
   local _desc _checklist _answers rv _apparmor _hardening _state_armor _state_hardening _audit _state_audit _options \
-    _tag _label _label_for _raw _selected_tags _file_audit _file_sysctl _status _line
+    _tag _label _label_for _raw _selected_tags _file_audit _file_sysctl _status _line _firewall _state_firewall
   # Loading local variable from config file
   _apparmor=$(get_option APPARMOR)
   if  [ -n "$_apparmor" ] && [ "$_apparmor" -eq 1 ]; then
@@ -819,6 +820,12 @@ menu_hardening() {
     _state_audit="on"
   else
     _state_audit="off"
+  fi
+  _firewall=$(get_option FIREWALL)
+  if [ -n "$_firewall" ] && [ "$_firewall" -eq 1 ]; then
+    _state_firewall="on"
+  else
+    _state_firewall="off"
   fi
   # Messagebox with some info
   DIALOG --title "Hardening" --msgbox "\n
