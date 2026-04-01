@@ -1290,10 +1290,19 @@ It controls networking, security, and performance options." 30 80
 
 # Function to setting Firewall Manager (vuurmuur
 set_firewall() {
+  # Define some local function
+  local _source
+  _source=$(get_option SOURCE)
   echo "Enable service 'vuurmuur' to start at boot..."  >>"$LOG"
   chroot "$TARGETDIR" ln -s /etc/sv/vuurmuur /etc/runit/runsvdir/default/
   echo "Enable service 'vuurmuur-log' to start at boot..." >>"$LOG"
   chroot "$TARGETDIR" ln -s /etc/sv/vuurmuur-log /etc/runit/runsvdir/default/
+  # Copy rules file from /etc/vuurmuur/rules to $TARGET/tmp, then copy rules file to /etc/vuurmuur/rules
+  if [ -f /tmp/99-myconfig.rules ] && [ "$_source" = "net" ]; then
+    echo "Copy firewall rules file from /etc/vuurmuur/rules to $TARGET/tmp, then copy rules file to /etc/vuurmuur/rules" >>"$LOG"
+    cp /etc/vuurmuur/rules/rules.conf "$TARGETDIR"/tmp
+    chroot "$TARGETDIR" cp /tmp/rules.conf /etc/vuurmuur/rules/
+  fi
 }
 
 # Function for setting audit
