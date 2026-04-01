@@ -3448,7 +3448,7 @@ copy_rootfs() {
 # Function for install packages
 install_packages() {
   # Define some local variables
-  local _grub _syspkg _extrapkg _kernel _dracut _apparmor _audit
+  local _grub _syspkg _extrapkg _kernel _dracut _apparmor _audit _firewall
   # Initialise variables
   _grub=
   _syspkg=
@@ -3457,6 +3457,7 @@ install_packages() {
   _dracut=
   _apparmor=$(get_option APPARMOR)
   _audit=$(get_option AUDIT)
+  _firewall=$(get_option FIREWALL)
 
   if [ "$(get_option BOOTLOADER)" != none ]; then
     if [ -n "$EFI_SYSTEM" ]; then
@@ -3482,6 +3483,11 @@ install_packages() {
   # Add the package 'audit' if the user select this option
   if [ -n "$_audit" ] && [ "$_audit" -eq 1 ]; then
     _extrapkg+=" audit"
+  fi
+
+  # Add the package 'vuurmuur' if the user select this option
+  if [ -n "$_firewall" ] && [ "$_firewall" -eq 1 ]; then
+    _extrapkg+=" vuurmuur"
   fi
 
   mkdir -p $TARGETDIR/var/db/xbps/keys $TARGETDIR/usr/share
