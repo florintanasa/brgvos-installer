@@ -850,8 +850,8 @@ It controls networking, security, and performance options." 30 80
   # Description for checklist box
   _checklist=(
   "apparmor" "AppArmor" "$_state_armor" \
-  "audit" "Audit" "$_state_audit" \
   "firewall" "Firewall Manager(vuurmuur)" "$_state_firewall" \
+  "audit" "Audit" "$_state_audit" \
   "hardening" "Hardening(sysctl)" "$_state_hardening")
   # Create dialog
   DIALOG --no-tags --checklist "$_desc" 20 60 4 "${_checklist[@]}"
@@ -1299,9 +1299,9 @@ set_firewall() {
   chroot "$TARGETDIR" ln -s /etc/sv/vuurmuur-log /etc/runit/runsvdir/default/
   # Copy rules file from /etc/vuurmuur/rules to $TARGET/tmp, then copy rules file to /etc/vuurmuur/rules
   if [ -f /tmp/99-myconfig.rules ] && [ "$_source" = "net" ]; then
-    echo "Copy firewall rules file from /etc/vuurmuur/rules to $TARGET/tmp, then copy rules file to /etc/vuurmuur/rules" >>"$LOG"
-    cp /etc/vuurmuur/rules/rules.conf "$TARGETDIR"/tmp
-    chroot "$TARGETDIR" cp /tmp/rules.conf /etc/vuurmuur/rules/
+    echo "Copy firewall directory /etc/vuurmuur to $TARGETDIR/tmp, then copy rules file to /etc" >>"$LOG"
+    cp -r /etc/vuurmuur "$TARGETDIR"/tmp
+    chroot "$TARGETDIR" cp -r /tmp/vuurmuur /etc/
   fi
 }
 
@@ -3481,8 +3481,8 @@ install_packages() {
   fi
 
   _syspkg="base-system"
-  _extrapkg="lvm2 cryptsetup nano"
-  _kernel="linux6.12"
+  _extrapkg="lvm2 cryptsetup nano bash-completion cronie"
+  _kernel="linux6.18"
   _dracut="dracut"
 
   # Add the package 'apparmor' if the user select this option
