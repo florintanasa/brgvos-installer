@@ -357,6 +357,7 @@ DIE() {
   set_option APPARMOR "" # clear APPARMOR value
   set_option HARDENING "" # clear HARDENING value
   set_option AUDIT "" # clear AUDIT value
+  set_option FIREWALL "" # clear FIREWALL value
   rm -f "$ANSWER" "$TARGET_FSTAB" "$TARGET_SERVICES"
   # re-enable printk
   if [ -w /proc/sys/kernel/printk ]; then
@@ -800,7 +801,7 @@ show_partitions_filtered() {
 menu_hardening() {
   # Define some local variables
   local _desc _checklist _answers rv _apparmor _hardening _state_armor _state_hardening _audit _state_audit _options \
-    _tag _label _label_for _raw _selected_tags _file_audit _file_sysctl _status _line
+    _tag _label _label_for _raw _selected_tags _file_audit _file_sysctl _status _line _firewall _state_firewall
   # Loading local variable from config file
   _apparmor=$(get_option APPARMOR)
   if  [ -n "$_apparmor" ] && [ "$_apparmor" -eq 1 ]; then
@@ -820,6 +821,12 @@ menu_hardening() {
   else
     _state_audit="off"
   fi
+  _firewall=$(get_option FIREWALL)
+  if [ -n "$_firewall" ] && [ "$_firewall" -eq 1 ]; then
+    _state_firewall="on"
+  else
+    _state_firewall="off"
+  fi
   # Messagebox with some info
   DIALOG --title "Hardening" --msgbox "\n
   ${BOLD}${RED}WARNING: If you're beginner, try these options on a test machine first!${RESET}\n\n
@@ -827,6 +834,9 @@ menu_hardening() {
 ${BOLD}${YELLOW}AppArmor${RESET} – a Linux security module that confines programs to a set of defined permissions (profiles). \
 It enforces access control by restricting file, network, and capability usage, helping prevent exploits even if an \
 application is compromised.\n\n
+${BOLD}${YELLOW}Firewall Manager(vuurmuur)${RESET} – Is a firewall manager for Linux, built on top of iptables. Purpose \
+a high-level interface for netfilter - you create zones, networks, hosts, and rules in an easy-to-understand way; it \
+generates iptables rules or scripts. Interface is interactive Ncurses(terminal); can be managed over SSH.\n\n
 ${BOLD}${YELLOW}Audit${RESET} – the Linux auditing subsystem (auditd) that records security‑relevant events such as \
 system calls, file accesses, and user actions. Administrators configure rules to log specific activities, then review \
 the logs for compliance or incident investigation.\n
@@ -839,14 +849,15 @@ ${BLUE}'/tmp/99-myconfig.conf'${RESET}.\n
 Settings are stored on ${BLUE}'/etc/sysctl.d/99-myconfig.conf'${RESET}, after install.\n
 It controls networking, security, and performance options." 30 80
   # Description for checklist box
-  _desc="Select if you wish to setting AppArmor and hardening"
+  _desc="Select if you wish to setting AppArmor, firewall and hardening"
   # Description for checklist box
-  _checklist="
-  apparmor AppArmor $_state_armor \
-  audit Audit $_state_audit \
-  hardening Hardening(sysctl) $_state_hardening"
+  _checklist=(
+  "apparmor" "AppArmor" "$_state_armor" \
+  "firewall" "Firewall Manager(vuurmuur)" "$_state_firewall" \
+  "audit" "Audit" "$_state_audit" \
+  "hardening" "Hardening(sysctl)" "$_state_hardening")
   # Create dialog
-  DIALOG --no-tags --checklist "$_desc" 20 60 2 ${_checklist}
+  DIALOG --no-tags --checklist "$_desc" 20 60 4 "${_checklist[@]}"
   # Verify if the user accept the dialog
   rv=$?
   if [ "$rv" -eq 0 ]; then
@@ -855,6 +866,16 @@ It controls networking, security, and performance options." 30 80
       set_option APPARMOR "1"
     else
       set_option APPARMOR "0"
+    fi
+    if echo "$_answers" | grep -q "firewall"; then\
+      set_option FIREWALL "1"
+    else
+      set_option FIREWALL "0"
+    fi
+    _firewall=$(get_option FIREWALL)
+    if [ "$_firewall" -eq 1 ]; then
+      vuurmuur_conf -W 2>>"$LOG"
+      clear
     fi
     if echo "$_answers" | grep -q "audit"; then\
       set_option AUDIT "1"
@@ -1268,6 +1289,23 @@ It controls networking, security, and performance options." 30 80
   fi
   # set hardening done
   HARDENING_DONE=1
+}
+
+# Function to setting Firewall Manager (vuurmuur
+set_firewall() {
+  # Define some local function
+  local _source
+  _source=$(get_option SOURCE)
+  echo "Enable service 'vuurmuur' to start at boot..."  >>"$LOG"
+  chroot "$TARGETDIR" ln -s /etc/sv/vuurmuur /etc/runit/runsvdir/default/
+  echo "Enable service 'vuurmuur-log' to start at boot..." >>"$LOG"
+  chroot "$TARGETDIR" ln -s /etc/sv/vuurmuur-log /etc/runit/runsvdir/default/
+  # Copy rules file from /etc/vuurmuur/rules to $TARGET/tmp, then copy rules file to /etc/vuurmuur/rules
+  if [ -f /tmp/99-myconfig.rules ] && [ "$_source" = "net" ]; then
+    echo "Copy firewall directory /etc/vuurmuur to $TARGETDIR/tmp, then copy rules file to /etc" >>"$LOG"
+    cp -r /etc/vuurmuur "$TARGETDIR"/tmp
+    chroot "$TARGETDIR" cp -r /tmp/vuurmuur /etc/
+  fi
 }
 
 # Function for setting audit
@@ -2281,12 +2319,13 @@ menu_bootloader() {
 # Function to set bootloader from loaded saved configure file
 set_bootloader() {
   # Declare some local variables
-  local dev _encrypt _rootfs _bool bool index _boot _rd_luks_uuid _crypts _apparmor _audit _hardening
+  local dev _encrypt _rootfs _bool bool index _boot _rd_luks_uuid _crypts _apparmor _audit _hardening _firewall
   local -a luks_devices # Declare matrices
   # Initialise variables
   dev=$(get_option BOOTLOADER)
   _crypts=$(get_option CRYPTS)
   _apparmor=$(get_option APPARMOR)
+  _firewall=$(get_option FIREWALL)
   _audit=$(get_option AUDIT)
   _hardening=$(get_option HARDENING)
   grub_args=
@@ -2391,9 +2430,14 @@ set_bootloader() {
   if [ -n "$_apparmor" ] && [ "$_apparmor" -eq 1 ]; then # If yes, enable AppArmor in kernel parameters to be loaded in Enforce mode
     echo "Security AppArmor was set to be loaded by kernel in Enforce mode..." >>$LOG
     {
-      chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\([^"]*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 apparmor=1 security=apparmor"/' /etc/default/grub
+      chroot $TARGETDIR sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\([^"]*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 apparmor=1 security=apparmor lsm=landlock,lockdown,yama,integrity,apparmor,bpf"/' /etc/default/grub
       chroot $TARGETDIR sed -i 's/APPARMOR=complain/APPARMOR=enforce/g' /etc/default/apparmor
     } >>$LOG 2>&1
+  fi
+  # Check if the user set to use Firewall Manager(vuurmuur)
+  if [ -n "$_firewall" ] && [ "$_firewall" -eq 1 ]; then
+    echo "Prepare Firewall Manager - vuurmuur ..." >>$LOG
+    set_firewall
   fi
   # Check if the user set to use Audit
   if [ -n "$_audit" ] && [ "$_audit" -eq 1 ]; then
@@ -3416,7 +3460,7 @@ copy_rootfs() {
 # Function for install packages
 install_packages() {
   # Define some local variables
-  local _grub _syspkg _extrapkg _kernel _dracut _apparmor _audit
+  local _grub _syspkg _extrapkg _kernel _dracut _apparmor _audit _firewall
   # Initialise variables
   _grub=
   _syspkg=
@@ -3425,6 +3469,7 @@ install_packages() {
   _dracut=
   _apparmor=$(get_option APPARMOR)
   _audit=$(get_option AUDIT)
+  _firewall=$(get_option FIREWALL)
 
   if [ "$(get_option BOOTLOADER)" != none ]; then
     if [ -n "$EFI_SYSTEM" ]; then
@@ -3439,8 +3484,8 @@ install_packages() {
   fi
 
   _syspkg="base-system"
-  _extrapkg="lvm2 cryptsetup nano"
-  _kernel="linux6.12"
+  _extrapkg="lvm2 cryptsetup nano bash-completion cronie"
+  _kernel="linux6.18"
   _dracut="dracut"
 
   # Add the package 'apparmor' if the user select this option
@@ -3450,6 +3495,11 @@ install_packages() {
   # Add the package 'audit' if the user select this option
   if [ -n "$_audit" ] && [ "$_audit" -eq 1 ]; then
     _extrapkg+=" audit"
+  fi
+
+  # Add the package 'vuurmuur' if the user select this option
+  if [ -n "$_firewall" ] && [ "$_firewall" -eq 1 ]; then
+    _extrapkg+=" vuurmuur"
   fi
 
   mkdir -p $TARGETDIR/var/db/xbps/keys $TARGETDIR/usr/share
@@ -3595,7 +3645,7 @@ ${BOLD}Do you want to continue?${RESET}" 20 80 || return
     chroot $TARGETDIR dracut --no-hostonly --add-drivers "ahci" --force >>$LOG 2>&1
     INFOBOX "Removing temporary packages from target ..." 4 80
     echo "Removing temporary packages from target ..." >>$LOG
-    TO_REMOVE="xmirror dialog"
+    TO_REMOVE="xmirror"
     # only remove espeakup and brltty if it wasn't enabled in the live environment
     if ! [ -e "/var/service/espeakup" ]; then
       TO_REMOVE+=" espeakup"
